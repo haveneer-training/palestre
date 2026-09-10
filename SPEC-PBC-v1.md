@@ -1,6 +1,6 @@
 # Palestre — Spécification normative `PBC v1`
 
-**Statut** : normatif. **Version** : `1.7.0`. **Date** : 2026-09-10.
+**Statut** : normatif. **Version** : `1.8.0`. **Date** : 2026-09-10.
 
 Ce document est le contrat commun à tous les groupes. Toute implémentation conforme doit produire, pour une entrée
 donnée, exactement le même résultat d'exécution, le même gaz consommé, les mêmes fautes, la même mémoire finale et les
@@ -72,7 +72,7 @@ statique du bytecode n'en devient pas triviale pour autant — elle reste l'obje
 | Pile de données        | 64 emplacements `i64`                  | `Fault::StackOverflow`     |
 | Pile d'appels          | 16 adresses de retour                  | `Fault::CallStackOverflow` |
 | Mémoire par agent      | 256 cellules `i64`, indices `0..=255`  | `Fault::OutOfBounds`       |
-| Budget de gaz par tour | `gas_budget`, **200** usuel (`1..=65535`) | `Fault::OutOfGas`       |
+| Budget de gaz par tour | `gas_budget`, **1000** usuel (`1..=65535`) | `Fault::OutOfGas`      |
 
 La mémoire est **persistante d'un tour à l'autre**. La pile de données et la pile d'appels sont **vidées au début de
 chaque tour**. Le compteur ordinal (`pc`) repart de `0` à chaque tour.
@@ -153,7 +153,7 @@ premier. Toute instruction à deux opérandes de cette annexe se lit ainsi ; la 
 
 Tout autre octet ⇒ `Fault::BadOpcode`.
 
-`TRACE` coûtant `1`, la trace d'un agent compte **au plus `gas_budget` entrées** par tour — soit 200 sous le budget
+`TRACE` coûtant `1`, la trace d'un agent compte **au plus `gas_budget` entrées** par tour — soit 1000 sous le budget
 usuel, et `65535` au maximum absolu, `gas_budget` étant un `u16`.
 Cette borne est ce qui rend tenable la règle de non-allocation dans la boucle d'un tour : le tampon de trace est
 dimensionné une fois pour le budget de la partie, jamais pendant le tour. Elle fixe aussi la borne de trame de K.2.
@@ -255,12 +255,12 @@ le complément à un. `NOT 0` vaut `1`, `BNOT 0` vaut `-1`, et `BNOT 5` vaut `-6
 de `GAS` lui-même, et cette clause est normative.
 
 Elle n'est pas un choix libre : c'est la lecture directe du cycle de B.2, dont l'étape 4 prélève le gaz et l'étape 5
-exécute l'instruction. Quand `GAS` s'exécute, ses deux unités sont déjà parties. Sous le budget usuel de `200`, un
-`GAS` placé en `pc = 0` empile donc **`198`**.
+exécute l'instruction. Quand `GAS` s'exécute, ses deux unités sont déjà parties. Sous le budget usuel de `1000`, un
+`GAS` placé en `pc = 0` empile donc **`998`**.
 
 ```
-gas_budget = 200
-pc = 0 :  GAS   ⇒  198
+gas_budget = 1000
+pc = 0 :  GAS   ⇒  998
 ```
 
 C'est le même ordre 4-puis-5 qui fait qu'un `PUSH` sur pile pleine sans gaz restant produit `OutOfGas` et non
@@ -278,7 +278,7 @@ C'est le même ordre 4-puis-5 qui fait qu'un `PUSH` sur pile pleine sans gaz res
 La table de gaz est celle de l'annexe B. Elle n'est ni monotone ni intuitive — `STORE` plus cher que `LOAD`, `SHR`
 plus cher que `SHL` — et c'est voulu. Elle est appliquée telle quelle.
 
-Budget par tour : `gas_budget`, au minimum `1` et au maximum `65535` puisqu'il est un `u16`. La valeur usuelle est `200`.
+Budget par tour : `gas_budget`, au minimum `1` et au maximum `65535` puisqu'il est un `u16`. La valeur usuelle est `1000`.
 Le gaz non consommé n'est pas reporté d'un tour sur l'autre. `HALT` coûte `0`, donc un programme peut toujours s'arrêter
 proprement.
 
@@ -292,7 +292,7 @@ Pour le tour `t` (à partir de `1`), les agents sont traités dans l'**ordre cro
 vivant :
 
 1. Instantané de l'état de l'agent et du monde.
-2. Pile et pile d'appels vidées, `pc = 0`, gaz = `gas_budget` (`200` usuel).
+2. Pile et pile d'appels vidées, `pc = 0`, gaz = `gas_budget` (`1000` usuel).
 3. Exécution jusqu'à `HALT` ou faute.
 4. **Si faute** : l'état de l'agent et du monde est restauré depuis l'instantané. Ne sont **pas** restaurés : le gaz
    consommé, la trace, et **l'action tentée**. La faute est consignée.
@@ -495,7 +495,7 @@ OPEN     {
 READY    {
   "proto": 1,
   "spec": "PBC1",
-  "spec_version": "1.7.0",
+  "spec_version": "1.8.0",
   "sessions_max": 16
 }
 
@@ -511,7 +511,7 @@ SESSION  {
 EXEC     {
   "session": "1",
   "mem": [0, 0, 100, "… 253 valeurs de plus …"],
-  "budget": 200
+  "budget": 1000
 }
 
 SENSE    {
@@ -608,7 +608,7 @@ celle-ci est close sans émission de `RESULT`.
 
 Le protocole ne comporte aucun choix non déterministe côté serveur. Tout l'aléa et les interactions proviennent du client via les rappels.
 
-`RAND` coûtant 5 unités de gaz (D.1), il y a au plus `budget / 5` rappels `RAND` par exécution (40 pour un budget usuel de 200).
+`RAND` coûtant 5 unités de gaz (D.1), il y a au plus `budget / 5` rappels `RAND` par exécution (200 pour un budget usuel de 1000).
 `sessions_max` (annoncé dans `READY`) borne le nombre de sessions simultanées sur une connexion.
 
 ### K.8 Erreurs et robustesse
