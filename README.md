@@ -108,6 +108,22 @@ palestre exec --listen <adresse>
 Cette commande démarre le serveur d'exécution réseau sur l'adresse spécifiée (par exemple `127.0.0.1:9000`), prêt à
 traiter les trames du protocole défini dans l'Annexe K (`OPEN`, `SUBMIT`, `EXEC`, rappels `SENSE`/`ACT`/`RAND`).
 
+### Niveau Minimal (MVP) pour 10/20
+
+Le niveau minimal fonctionnel conditionnant la validation du module (**10/20**) garantit l'acquisition du socle fondamental :
+
+1. **Chargeur et validateur PBC robuste** :
+   * Décodage et validation stricte du format binaire `PBC1` (en-tête, table des constantes, code).
+   * Tolérance absolue aux pannes : rejet systématique de tout binaire tronqué ou corrompu par une erreur typée (**zéro `panic`**, zéro crash).
+2. **Couverture de tests de l'exécution du bytecode** :
+   * Moteur d'exécution validant une couverture raisonnable des instructions pivots : manipulation de pile (`PUSH*`, `POP`, `DUP`, `SWAP`), arithmétique et comparaisons (`ADD`, `SUB`, `MUL`, `DIV`, `CMP`), mémoire persistante (`LOAD`, `STORE`), sauts (`JUMP`, `JUMPI`) et facturation déterministe du gaz.
+   * Suite de tests automatisés (`cargo test`) démontrant de manière reproductible la conformité de ce jeu d'instructions.
+3. **Démonstration de match entre agents `.pbc` simples** :
+   * Boucle de match fonctionnelle opposant deux agents simples fournis sous forme de bytecode binaire (par exemple l'agent inerte `idler` et un agent mobile basique se déplaçant ou récoltant).
+   * Exécution des tours avec mise à jour du plateau, décompte du gaz et application des actions élémentaires.
+4. **Commandes et script de reproductibilité** :
+   * Fourniture d'une commande CLI claire ou d'un court script permettant au jury de rejouer le match de démonstration et la suite de tests sans friction.
+
 ### Outils de développement suggérés
 
 Pour faciliter vos tests et la mise au point de vos agents, vous comprendrez rapidement l'intérêt de disposer d'outils
@@ -219,41 +235,96 @@ tenir un journal de décisions d'architecture (ADR) versionné dans votre dépô
   Un journal rédigé rétrospectivement en bloc dans les derniers jours ne sera pas crédible.
 * **Attendu** : au moins **dix entrées**, dont **au moins trois** où la proposition de l'assistant a été adoptée initialement
   sans compréhension immédiate totale. L'honnêteté intellectuelle et le recul critique sont directement notés.
+* **Condition impérative pour les bonus (palier 16–20)** : Tout bonus ou ouverture revendiqué lors de l'évaluation doit
+  obligatoirement faire l'objet d'un fichier ADR dédié dans `journal/D-xxx.md`. Cette entrée doit spécifier précisément le
+  besoin, les options de conception étudiées, ce que l'assistant IA a proposé, les arbitrages retenus et les tests
+  prouvant son bon fonctionnement. Aucun point au titre des bonus ne sera accordé sans cette traçabilité formelle.
 
 ---
 
 ## ⚖️ 5. Évaluation et Intelligence Artificielle
 
-L'IA est un assistant, pas un substitut à votre compréhension. Le seul filtre d'évaluation fiable est le code défendu
-au clavier, sans réseau, devant le jury. C'est pourquoi **8 points sur 20** se jouent en direct lors de la soutenance.
+L'IA est un outil d'assistance, pas un remplaçant. Aucune règle purement formelle ne peut empêcher un modèle de générer du code : le seul filtre souverain et irréfutable est le clavier, sans réseau, devant le jury lors de la soutenance.
 
-### Barème d'évaluation (sur 20 points)
+### Critères d'évaluation
 
-1. **Architecture et Design (4 pts)** :
-   * Clarté et modularité de la conception, séparation nette entre le format PBC, le moteur de calcul et la couche réseau.
-   * Modélisation robuste des états et des erreurs : les états invalides sont inreprésentables.
-   * Utilisation pertinente des traits et de la généricité en Rust.
+Le projet est évalué selon cinq dimensions complémentaires :
 
-2. **Conformité et Interopérabilité (4 pts)** :
-   * Conformité stricte à la spécification `SPEC-PBC-v1.md` : jeu d'instructions B.3, cycle de gaz B.2, liste fermée des 16 fautes B.5.
+1. **Architecture et Conception** :
+   * Clarté et modularité de la conception, séparation nette entre le format PBC (`pbc`), le moteur d'exécution et la couche réseau (`exec`).
+   * Modélisation rigoureuse des états et des erreurs (typage fort) : les états invalides sont inreprésentables.
+   * Utilisation judicieuse des traits et de la généricité en Rust.
+
+2. **Conformité et Déterminisme** :
+   * Validation stricte du format binaire PBC et respect scrupuleux de la spécification `SPEC-PBC-v1.md` (jeu d'instructions B.3, cycle de gaz B.2, liste fermée des 16 fautes B.5).
    * Interopérabilité réseau : conformité complète au protocole de l'Annexe K via la commande `palestre exec --listen <adresse>`.
    * Matrice croisée lors de la soutenance : test de vos programmes sur les exécuteurs des autres groupes et de la référence.
-   * Respect absolu des 6 invariants fondamentaux.
+   * Respect absolu des six invariants fondamentaux.
 
-3. **Qualité Rust (4 pts)** :
-   * Code idiomatique, `clippy` sans avertissement (`-D warnings`), formatage `rustfmt`.
-   * Robustesse du chargeur et du moteur d'exécution : gestion rigoureuse des erreurs, absence de crash (`panic`) sur entrées hostiles ou corrompues.
-   * Richesse de la suite de tests et valorisation des bonnes pratiques de test (tests de propriétés `proptest`, fuzzing du chargeur).
-   * Prérequis d'admission (0 pt si non satisfait) : compilation propre sans avertissement, zéro `unsafe`, zéro `async`.
+3. **Qualité Rust et Démarche de Test** :
+   * Code idiomatique respectant les conventions Rust : gestion exhaustive des erreurs via `Result`/`Option`.
+   * Absence totale de `panic!`, `unwrap()`, `unsafe` et d'`async`.
+   * Robustesse éprouvée par les tests : tests unitaires, démarche de tests de propriétés (`proptest`) et fuzzing du chargeur binaire.
+   * Respect strict des linters officiels : `cargo clippy -- -D warnings` et `cargo fmt` impeccables.
 
-4. **Défense Orale et Chapeau (8 pts)** :
-   * **Navigation (individuel, 2 pts)** : capacité immédiate à naviguer dans votre code sans hésitation, à pointer l'application
-     d'un invariant spécifique ou à justifier un choix de typage ou de cycle de vie.
-   * **Modifications en direct / Chapeau (collectif, 4 pts)** : épreuve de *MOB programming* avec **un seul clavier tournant
-     toutes les 3 minutes**. Une carte tirée au sort impose une modification en direct (ajout d'une nouvelle instruction, adaptation d'un coût
-     de gaz, gestion d'un cas limite réseau). À l'issue du temps imparti, la suite de tests doit être au vert.
-   * **Analyse critique et Journal ADR (collectif, 2 pts)** : soutenance de vos choix d'architecture, analyse des limites de votre
-     système et défense des entrées du journal ADR.
+4. **Traçabilité et Démarche d'Ingénierie** :
+   * Rigueur du journal de bord architectural (ADR) dans `journal/` illustrant une progression chronologique continue et documentée.
+   * Recul critique documenté face aux propositions des assistants IA.
+   * Historique Git équilibré témoignant de la contribution réelle et mesurable de chaque membre du groupe.
+
+5. **Maîtrise en Soutenance et Live-Coding** :
+   * Clarté de la démonstration et aisance de navigation dans le code source sans réseau.
+   * Réactivité et lucidité lors des épreuves de modification en direct au clavier (MOB programming).
+   * Capacité individuelle à expliquer, justifier et modifier n'importe quelle portion du projet.
+
+### Barème officiel (Règlement ESGI)
+
+L'évaluation s'articule autour des cinq paliers réglementaires de l'établissement :
+
+* **16 à 20** : **Objectifs dépassés** — Qualité de conception exceptionnelle, robustesse sans faille démontrée par fuzzing, et bonus ambitieux pleinement opérationnels, préalablement spécifiés et minutieusement documentés dans le journal d'architecture (ADR).
+* **13 à 15** : **Ensemble des objectifs atteints** — Implémentation complète et rigoureusement conforme aux spécifications (chargeur, machine, exécuteur réseau Annexe K), couverture de tests solide, journal d'architecture complet et soutenance fluide démontrant une excellente maîtrise technique.
+* **10 à 12** : **Objectifs globalement atteints avec des écarts mineurs** — Niveau minimal (MVP) atteint : chargeur PBC sans crash, exécution fonctionnelle d'un match entre agents simples et couverture raisonnable du jeu d'instructions par des tests automatisés.
+* **5 à 9** : **Écarts majeurs par rapport aux objectifs** — Niveau minimal incomplet ou instable, gestion des erreurs défaillante, couverture de tests lacunaire, journal ADR superficiel ou difficultés significatives lors des épreuves pratiques en soutenance.
+* **0 à 4** : **Écarts critiques par rapport aux objectifs** — Non-compilation du projet, présence d'`unsafe`, d'`async` ou de `panic!`, violations répétées des invariants fondamentaux, ou projet produit par IA sans compréhension prouvée.
+
+### Niveau minimal (MVP) pour 10/20
+
+Le niveau minimal fonctionnel conditionnant la validation du module (**palier 10 à 12**) est rigoureusement contractualisé :
+
+* **Chargeur PBC robuste** : validation stricte du format binaire `PBC1`, rejet propre des entrées corrompues, incomplètes ou tronquées sans aucun crash (**zéro `panic`**).
+* **Couverture de tests de l'exécution du bytecode** : suite de tests automatisés (`cargo test`) couvrant de manière vérifiable les instructions pivots du jeu PBC (manipulation de la pile, arithmétique, mémoire persistante `LOAD`/`STORE`, sauts et gestion déterministe du gaz).
+* **Démonstration d'un match d'agents simples** : simulation fonctionnelle opposant deux agents `.pbc` élémentaires (ex: `idler`, agent de déplacement ou de récolte simple), attestant du bon déroulement des tours, de la mise à jour de l'état du monde et de la terminaison.
+* **Reproductibilité immédiate** : commandes CLI directes ou court script automatisé facilitant la reproduction directe du match et de la suite de tests par le jury.
+
+### La soutenance orale : régulateur et malus
+
+Le code livré et gelé fixe un plafond théorique de notation. **La soutenance orale n'est pas une simple addition de points supplémentaires : elle constitue un instrument de validation et de régulation (malus).**
+
+Une excellente prestation orale confirme le niveau du livrable. En revanche, toute défaillance constatée en direct (hésitations prolongées, incapacité à retrouver l'origine d'une structure, échec lors des modifications demandées) entraîne l'application d'un **malus direct et substantiel** dégradant la note finale.
+
+#### Clause de sanction IA : dégradation jusqu'à 0/20
+
+L'intelligence artificielle est un assistant de productivité, non un auteur de substitution. **Tout écart significatif entre le niveau technique du code présenté et l'incapacité individuelle ou collective à le défendre, l'expliquer ou le modifier en direct au clavier sans réseau entraînera une dégradation drastique de la note, pouvant descendre jusqu'à 0/20 s'il est avéré que le projet a été produit par IA sans action ni compréhension réelles des étudiants.**
+
+### Les épreuves pratiques : Le chapeau 🎩
+
+La soutenance s'articule autour de deux chapeaux et d'épreuves concrètes au clavier :
+
+* **Le jury pioche dans votre journal (ADR)** : Une décision d'architecture est tirée au sort. Vous devez la résumer sans notes, montrer le code qui l'implémente, expliquer l'alternative écartée (voire en implémenter le début), et justifier l'antériorité de la décision dans `git log`.
+* **Vous piochez dans un chapeau de questions de code** : Questions techniques transversales, communes à toutes les implémentations et conçues sur la base de la spécification :
+    * **Navigation individuelle (sans clavier, sans réseau)** : localiser instantanément où est appliqué un invariant, expliquer la transition d'un opcode, justifier un type d'erreur ou la durée de vie d'une référence (`&mut`). **L'incapacité à naviguer dans son propre code est éliminatoire.**
+    * **Conformité & cas limites** : diagnostiquer et faire passer un cas de test inédit ou une trame malformée.
+    * **Spécification v2** : ajout d'une instruction ou modification d'une règle de gaz ; analyse des tests impactés.
+    * **Interopérabilité** : identification d'un cas de divergence face à un bytecode ou un serveur tiers.
+    * **Concurrence & Réseau** : justification rigoureuse des primitives de synchronisation standard (`Arc`, `Mutex`, `RwLock`, `mpsc`) ou traitement des coupures réseau.
+
+#### Format des modifications en direct : MOB programming
+
+L'épreuve collective de modification s'effectue en direct sous format **MOB programming** :
+* **Un seul clavier pour l'équipe**, pendant que les autres membres guident et conçoivent la solution.
+* **Le clavier tourne au hasard toutes les trois minutes**, imposant une compréhension collective et continue du code.
+* À la fin du temps imparti, la suite de tests (`cargo test`) doit être au vert.
+* L'évaluation porte autant sur la méthode que sur le résultat : temps de localisation, pertinence du guidage collectif et surtout **réaction lucide face aux erreurs du compilateur Rust** (comprendre un message du borrow checker plutôt que tenter des `clone()` au hasard).
 
 ### La journée d'interopérabilité (Jalon J4)
 
@@ -265,7 +336,11 @@ c'est une occasion privilégiée de détecter les divergences de consensus et d'
 
 ## 🎁 6. Pistes de Bonus
 
-Pour dépasser le cadre du socle obligatoire et valoriser votre projet :
+Pour dépasser les objectifs (palier 16 à 20 du Règlement ESGI) :
+
+> **Règle impérative d'éligibilité des bonus** :  
+> Aucun bonus ne sera valorisé au titre du palier 16–20 s'il n'est pas **précisément spécifié, implémenté avec rigueur et intégralement documenté dans un fichier ADR dédié (`journal/D-xxx.md`)**.  
+> Ce document doit expliciter le problème technique résolu, les options architecturales envisagées, le recul critique face aux propositions de l'IA et la stratégie de tests automatisés associée. Tout bonus non documenté dans l'ADR ou non maîtrisé lors du live-coding en soutenance sera ignoré.
 
 * **Assembleur et désassembleur textuels** : outillage de développement complet (compilation d'une syntaxe textuelle libre vers `.pbc`,
   désassemblage lisible, test de propriété `asm(disasm(p)) == p`).
