@@ -116,7 +116,7 @@ Le niveau minimal fonctionnel conditionnant la validation du module (**10/20**) 
    * Décodage et validation stricte du format binaire `PBC1` (en-tête, table des constantes, code).
    * Tolérance absolue aux pannes : rejet systématique de tout binaire tronqué ou corrompu par une erreur typée (**zéro `panic`**, zéro crash).
 2. **Couverture de tests de l'exécution du bytecode** :
-   * Moteur d'exécution validant une couverture raisonnable des instructions pivots : manipulation de pile (`PUSH*`, `POP`, `DUP`, `SWAP`), arithmétique et comparaisons (`ADD`, `SUB`, `MUL`, `DIV`, `CMP`), mémoire persistante (`LOAD`, `STORE`), sauts (`JUMP`, `JUMPI`) et facturation déterministe du gaz.
+   * Moteur d'exécution validant une couverture raisonnable des instructions pivots : manipulation de pile (`CONST`, `PUSHI16`, `DROP`, `DUP`, `SWAP`), arithmétique et comparaisons (`ADD`, `SUB`, `MUL`, `DIV`, `EQ`, `LT`, `GT`), mémoire persistante (`LOADX`/`STOREX` ou `LOAD`/`STORE`), sauts (`JMP`, `JZ`, `JNZ`) et facturation déterministe du gaz.
    * Suite de tests automatisés (`cargo test`) démontrant de manière reproductible la conformité de ce jeu d'instructions.
 3. **Démonstration de match entre agents `.pbc` simples** :
    * Boucle de match fonctionnelle opposant deux agents simples fournis sous forme de bytecode binaire (par exemple l'agent inerte `idler` et un agent mobile basique se déplaçant ou récoltant).
@@ -131,7 +131,7 @@ d'assemblage et de désassemblage (ou plus tard d'un langage source plus élabor
 de développer vos propres commandes d'outillage (par exemple au sein du même binaire `palestre`) :
 
 ```bash
-palestre asm agent.pasm -o agent.pbc       # assemblage textuel
+palestre asm agent.asm -o agent.pbc       # assemblage textuel
 palestre disasm agent.pbc                  # désassemblage lisible
 palestre run agent.pbc                     # exécution locale d'un agent pour test
 ```
@@ -292,7 +292,7 @@ L'évaluation s'articule autour des cinq paliers réglementaires de l'établisse
 Le niveau minimal fonctionnel conditionnant la validation du module (**palier 10 à 12**) est rigoureusement contractualisé :
 
 * **Chargeur PBC robuste** : validation stricte du format binaire `PBC1`, rejet propre des entrées corrompues, incomplètes ou tronquées sans aucun crash (**zéro `panic`**).
-* **Couverture de tests de l'exécution du bytecode** : suite de tests automatisés (`cargo test`) couvrant de manière vérifiable les instructions pivots du jeu PBC (manipulation de la pile, arithmétique, mémoire persistante `LOAD`/`STORE`, sauts et gestion déterministe du gaz).
+* **Couverture de tests de l'exécution du bytecode** : suite de tests automatisés (`cargo test`) couvrant de manière vérifiable les instructions pivots du jeu PBC (manipulation de la pile `CONST`/`PUSHI16`/`DROP`, arithmétique, comparaisons, mémoire persistante `LOADX`/`STOREX` ou `LOAD`/`STORE`, sauts `JMP`/`JZ`/`JNZ` et gestion déterministe du gaz).
 * **Démonstration d'un match d'agents simples** : simulation fonctionnelle opposant deux agents `.pbc` élémentaires (ex: `idler`, agent de déplacement ou de récolte simple), attestant du bon déroulement des tours, de la mise à jour de l'état du monde et de la terminaison.
 * **Reproductibilité immédiate** : commandes CLI directes ou court script automatisé facilitant la reproduction directe du match et de la suite de tests par le jury.
 

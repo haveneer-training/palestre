@@ -1,6 +1,6 @@
 # Palestre — Spécification normative `PBC v1`
 
-**Statut** : normatif. **Version** : `1.8.0`. **Date** : 2026-09-10.
+**Statut** : normatif. **Version** : `1.9.0`. **Date** : 2026-09-13.
 
 Ce document est le contrat commun à tous les groupes. Toute implémentation conforme doit produire, pour une entrée
 donnée, exactement le même résultat d'exécution, le même gaz consommé, les mêmes fautes, la même mémoire finale et les
@@ -14,7 +14,8 @@ Les mots **DOIT**, **NE DOIT PAS**, **DEVRAIT** et **PEUT** ont le sens habituel
 
 ## 0. Conventions générales
 
-* Tous les entiers multi-octets — fichier bytecode, trames réseau de l'annexe K — sont en **gros-boutiste** (*big-endian*). Sans exception.
+* Tous les entiers multi-octets — fichier bytecode, trames réseau de l'annexe K — sont en **gros-boutiste**
+  (*big-endian*). Sans exception.
 * Le type de valeur unique de la machine est `i64`, complément à deux.
 * Toute l'arithmétique est **enveloppante** (*wrapping*). Un dépassement n'est jamais une faute.
 * La division tronque vers zéro ; le reste porte le signe du dividende (sémantique de `/` et `%` de Rust sur `i64`, et
@@ -54,7 +55,7 @@ Une cible de saut **DOIT** porter le marqueur `JUMPDEST` (`0x43`, annexe B.3). C
 au chargement, et décoder à un décalage ne demande jamais de savoir ce qui le précède.
 
 Un saut **PEUT** donc toujours atterrir au milieu d'une instruction, pourvu que l'octet visé vaille `0x43` — fût-il
-l'octet de poids faible de l'opérande d'un `PUSHI 67`. Le décodage reprend à cet octet, qui s'exécute alors comme un
+l'octet de poids faible de l'opérande d'un `PUSHI16 67`. Le décodage reprend à cet octet, qui s'exécute alors comme un
 `JUMPDEST` ordinaire.
 
 C'est une divergence **délibérée** d'avec l'EVM pré-EOF, qui exclut de ses destinations valides les octets de données
@@ -67,12 +68,12 @@ statique du bytecode n'en devient pas triviale pour autant — elle reste l'obje
 
 ### B.1 Machine
 
-| Ressource              | Taille                                 | Dépassement                |
-|------------------------|----------------------------------------|----------------------------|
-| Pile de données        | 64 emplacements `i64`                  | `Fault::StackOverflow`     |
-| Pile d'appels          | 16 adresses de retour                  | `Fault::CallStackOverflow` |
-| Mémoire par agent      | 256 cellules `i64`, indices `0..=255`  | `Fault::OutOfBounds`       |
-| Budget de gaz par tour | `gas_budget`, **1000** usuel (`1..=65535`) | `Fault::OutOfGas`      |
+| Ressource              | Taille                                     | Dépassement                |
+|------------------------|--------------------------------------------|----------------------------|
+| Pile de données        | 64 emplacements `i64`                      | `Fault::StackOverflow`     |
+| Pile d'appels          | 16 adresses de retour                      | `Fault::CallStackOverflow` |
+| Mémoire par agent      | 256 cellules `i64`, indices `0..=255`      | `Fault::OutOfBounds`       |
+| Budget de gaz par tour | `gas_budget`, **1000** usuel (`1..=65535`) | `Fault::OutOfGas`          |
 
 La mémoire est **persistante d'un tour à l'autre**. La pile de données et la pile d'appels sont **vidées au début de
 chaque tour**. Le compteur ordinal (`pc`) repart de `0` à chaque tour.
@@ -91,8 +92,9 @@ chaque tour**. Le compteur ordinal (`pc`) repart de `0` à chaque tour.
 
 **Gaz consommé du tour.** Le gaz d'une instruction **refusée** à l'étape 4 n'est pas prélevé : il n'entre pas dans le
 `gas_used` du tour. Le gaz d'une instruction **exécutée** l'est toujours, y compris lorsqu'elle lève une faute à l'étape
+
 5. Conséquence : `gas_used` strictement inférieur au budget est le cas ordinaire d'un tour qui s'achève sur
-`OutOfGas` ; l'égalité avec le budget n'y survient que si le reliquat était exactement nul.
+   `OutOfGas` ; l'égalité avec le budget n'y survient que si le reliquat était exactement nul.
 
 L'ordre des étapes 4 et 5 est normatif et observable : un `PUSH` sur une pile pleine, sans gaz restant, doit produire
 `OutOfGas` et non `StackOverflow`. `gas_used` et `fault` étant normatifs, une machine qui prélève le gaz
@@ -104,52 +106,59 @@ après exécution est détectée même lorsque l'état final est identique.
 sommet **après** l'opération. Le nom le plus proche de `--` est celui du sommet, dans les deux cas : c'est lui qui se
 dépile en premier et lui qui s'empile en dernier. L'ordre d'écriture gauche-à-droite n'est **pas** l'ordre de la pile —
 un réflexe de lecture naturelle suggère l'inverse, et c'est le piège. Exemple : sur une pile `a b` (`b` au sommet), un
-`POP` appliqué à ce sommet s'écrit `a b -- a` — c'est `b` qui disparaît, pas `a`, alors même que `a` est le nom écrit en
+`DROP` appliqué à ce sommet s'écrit `a b -- a` — c'est `b` qui disparaît, pas `a`, alors même que `a` est le nom écrit
+en
 premier. Toute instruction à deux opérandes de cette annexe se lit ainsi ; la ligne de la table ne le répète pas.
 
-| Code   | Mnémonique | Opérande | Gaz    | Pile             | Sémantique                                                                                             |
-|--------|------------|----------|--------|------------------|--------------------------------------------------------------------------------------------------------|
-| `0x00` | `HALT`     | —        | 0      | `--`             | Fin normale du tour.                                                                                   |
-| `0x01` | `PUSHC k`  | `u16`    | 1      | `-- v`           | `v = constants[k]`. `k >= const_count` ⇒ `Fault::BadConst`.                                            |
-| `0x02` | `PUSHI n`  | `i16`    | 1      | `-- v`           | `v = n` étendu en signe.                                                                               |
-| `0x03` | `POP`      | —        | 1      | `a --`           |                                                                                                        |
-| `0x04` | `DUP`      | —        | 1      | `a -- a a`       |                                                                                                        |
-| `0x05` | `SWAP`     | —        | 1      | `a b -- b a`     |                                                                                                        |
-| `0x06` | `OVER`     | —        | 1      | `a b -- a b a`   |                                                                                                        |
-| `0x07` | `ROT`      | —        | 1      | `a b c -- b c a` | rotation de trois                                                                                      |
-| `0x08` | `PUSHCX`   | —        | 2      | `k -- v`         | `v = constants[k]`, `k` **dépilé**. `k < 0` ou `k >= const_count` ⇒ `Fault::BadConst`.                 |
-| `0x10` | `ADD`      | —        | 2      | `a b -- a+b`     | enveloppant                                                                                            |
-| `0x11` | `SUB`      | —        | 2      | `a b -- a-b`     | enveloppant                                                                                            |
-| `0x12` | `MUL`      | —        | 2      | `a b -- a*b`     | enveloppant                                                                                            |
-| `0x13` | `DIV`      | —        | 7      | `a b -- a/b`     | `b == 0` ⇒ `Fault::DivByZero`                                                                          |
-| `0x14` | `MOD`      | —        | 7      | `a b -- a%b`     | `b == 0` ⇒ `Fault::DivByZero`                                                                          |
-| `0x15` | `NEG`      | —        | 2      | `a -- -a`        | enveloppant                                                                                            |
-| `0x20` | `EQ`       | —        | 2      | `a b -- 0\|1`    |                                                                                                        |
-| `0x21` | `LT`       | —        | 2      | `a b -- 0\|1`    | comparaison signée `a < b`                                                                             |
-| `0x22` | `GT`       | —        | 2      | `a b -- 0\|1`    | comparaison signée `a > b`                                                                             |
-| `0x23` | `NOT`      | —        | 2      | `a -- 0\|1`      | `1` si `a == 0`, sinon `0` — **logique**, à ne pas confondre avec `BNOT`                               |
-| `0x24` | `AND`      | —        | 2      | `a b -- a&b`     | et bit à bit                                                                                           |
-| `0x25` | `OR`       | —        | 2      | `a b -- a\|b`    | ou bit à bit                                                                                           |
-| `0x26` | `XOR`      | —        | 4      | `a b -- a^b`     | ou exclusif bit à bit                                                                                  |
-| `0x27` | `SHL`      | —        | 3      | `a n -- v`       | décalage **logique** à gauche de `n` bits (B.6)                                                        |
-| `0x28` | `SHR`      | —        | 6      | `a n -- v`       | décalage **logique** à droite de `n` bits (B.6)                                                        |
-| `0x29` | `BNOT`     | —        | 2      | `a -- !a`        | complément à un — **bit à bit**, à ne pas confondre avec `NOT`                                         |
-| `0x2D` | `SAR`      | —        | 6      | `a n -- v`       | décalage **arithmétique** à droite de `n` bits (B.6)                                                   |
-| `0x30` | `LOAD`     | —        | 4      | `addr -- v`      | `v = mem[addr]`                                                                                        |
-| `0x31` | `STORE`    | —        | 5      | `v addr --`      | `mem[addr] = v`.                                                                                       |
-| `0x40` | `JMP d`    | `i16`    | 2      | `--`             | saut relatif                                                                                           |
-| `0x41` | `JZ d`     | `i16`    | 2      | `c --`           | saute si `c == 0`                                                                                      |
-| `0x42` | `JNZ d`    | `i16`    | 2      | `c --`           | saute si `c != 0`                                                                                      |
-| `0x43` | `JUMPDEST` | —        | 1      | `--`             | marque une cible de saut valide (A.3, B.4) ; aucun autre effet                                         |
-| `0x44` | `JMPX`     | —        | 3      | `t --`           | saut à la cible **absolue** dépilée (B.4)                                                              |
-| `0x50` | `CALL d`   | `i16`    | 6      | `--`             | empile l'adresse de retour, puis saut relatif                                                          |
-| `0x51` | `RET`      | —        | 4      | `--`             | dépile l'adresse de retour ; pile vide ⇒ `Fault::CallStackUnderflow`                                   |
-| `0x52` | `CALLX`    | —        | 7      | `t --`           | empile l'adresse de retour, puis saut à la cible **absolue** dépilée                                   |
-| `0x60` | `SENSE k`  | `u8`     | 8      | `-- v`           | capteur `k` (annexe E) ; inconnu ⇒ `Fault::BadSensor`                                                  |
-| `0x61` | `ACT k`    | `u8`     | 12     | `arg -- ok`      | action `k` (annexe E) ; inconnue ⇒ `Fault::BadAction` ; deuxième `ACT` du tour ⇒ `Fault::AlreadyActed` |
-| `0x70` | `RAND`     | —        | 5      | `-- v`           | tire une valeur aléatoire `v` fournie par l'hôte/environnement (rappel réseau K.3)                     |
-| `0x71` | `GAS`      | —        | 2      | `-- g`           | gaz restant du tour, **son propre coût déjà prélevé** (B.7)                                            |
-| `0xF0` | `TRACE`    | —        | 1      | `v --`           | ajoute `v` à la trace du tour ; aucun effet sur l'état                                                 |
+**Les mnémoniques de cette table sont indicatifs, pas normatifs.** Seuls l'octet, l'opérande, le gaz, la pile et la
+sémantique font foi. Un rendu étudiant qui écrirait `CONST` autrement, ou pas du tout, reste conforme tant que ses
+octets, son gaz et son effet sur la pile le sont.
+
+| Code   | Mnémonique  | Opérande | Gaz | Pile             | Sémantique                                                                                             |
+|--------|-------------|----------|-----|------------------|--------------------------------------------------------------------------------------------------------|
+| `0x00` | `HALT`      | —        | 0   | `--`             | Fin normale du tour.                                                                                   |
+| `0x01` | `CONST k`   | `u16`    | 1   | `-- v`           | `v = constants[k]`. `k >= const_count` ⇒ `Fault::BadConst`.                                            |
+| `0x02` | `PUSHI16 n` | `i16`    | 1   | `-- v`           | `v = n` étendu en signe.                                                                               |
+| `0x03` | `DROP`      | —        | 1   | `a --`           |                                                                                                        |
+| `0x04` | `DUP`       | —        | 1   | `a -- a a`       |                                                                                                        |
+| `0x05` | `SWAP`      | —        | 1   | `a b -- b a`     |                                                                                                        |
+| `0x06` | `OVER`      | —        | 1   | `a b -- a b a`   |                                                                                                        |
+| `0x07` | `ROT`       | —        | 1   | `a b c -- b c a` | rotation de trois                                                                                      |
+| `0x08` | `CONSTX`    | —        | 2   | `k -- v`         | `v = constants[k]`, `k` **dépilé**. `k < 0` ou `k >= const_count` ⇒ `Fault::BadConst`.                 |
+| `0x10` | `ADD`       | —        | 2   | `a b -- a+b`     | enveloppant                                                                                            |
+| `0x11` | `SUB`       | —        | 2   | `a b -- a-b`     | enveloppant                                                                                            |
+| `0x12` | `MUL`       | —        | 2   | `a b -- a*b`     | enveloppant                                                                                            |
+| `0x13` | `DIV`       | —        | 7   | `a b -- a/b`     | `b == 0` ⇒ `Fault::DivByZero`                                                                          |
+| `0x14` | `MOD`       | —        | 7   | `a b -- a%b`     | `b == 0` ⇒ `Fault::DivByZero`                                                                          |
+| `0x15` | `NEG`       | —        | 2   | `a -- -a`        | enveloppant                                                                                            |
+| `0x20` | `EQ`        | —        | 2   | `a b -- 0\|1`    |                                                                                                        |
+| `0x21` | `LT`        | —        | 2   | `a b -- 0\|1`    | comparaison signée `a < b`                                                                             |
+| `0x22` | `GT`        | —        | 2   | `a b -- 0\|1`    | comparaison signée `a > b`                                                                             |
+| `0x23` | `NOT`       | —        | 2   | `a -- 0\|1`      | `1` si `a == 0`, sinon `0` — **logique**, à ne pas confondre avec `BNOT`                               |
+| `0x24` | `AND`       | —        | 2   | `a b -- a&b`     | et bit à bit                                                                                           |
+| `0x25` | `OR`        | —        | 2   | `a b -- a\|b`    | ou bit à bit                                                                                           |
+| `0x26` | `XOR`       | —        | 4   | `a b -- a^b`     | ou exclusif bit à bit                                                                                  |
+| `0x27` | `SHL`       | —        | 3   | `a n -- v`       | décalage **logique** à gauche de `n` bits (B.6)                                                        |
+| `0x28` | `SHR`       | —        | 6   | `a n -- v`       | décalage **logique** à droite de `n` bits (B.6)                                                        |
+| `0x29` | `BNOT`      | —        | 2   | `a -- !a`        | complément à un — **bit à bit**, à ne pas confondre avec `NOT`                                         |
+| `0x2D` | `SAR`       | —        | 6   | `a n -- v`       | décalage **arithmétique** à droite de `n` bits (B.6)                                                   |
+| `0x30` | `LOADX`     | —        | 4   | `addr -- v`      | `v = mem[addr]`                                                                                        |
+| `0x31` | `STOREX`    | —        | 5   | `v addr --`      | `mem[addr] = v`.                                                                                       |
+| `0x32` | `LOAD k`    | `u8`     | 3   | `-- v`           | `v = mem[k]` (`1.9.0`)                                                                                 |
+| `0x33` | `STORE k`   | `u8`     | 4   | `v --`           | `mem[k] = v` (`1.9.0`)                                                                                 |
+| `0x40` | `JMP d`     | `i16`    | 2   | `--`             | saut relatif                                                                                           |
+| `0x41` | `JZ d`      | `i16`    | 2   | `c --`           | saute si `c == 0`                                                                                      |
+| `0x42` | `JNZ d`     | `i16`    | 2   | `c --`           | saute si `c != 0`                                                                                      |
+| `0x43` | `JUMPDEST`  | —        | 1   | `--`             | marque une cible de saut valide (A.3, B.4) ; aucun autre effet                                         |
+| `0x44` | `JMPX`      | —        | 3   | `t --`           | saut à la cible **absolue** dépilée (B.4)                                                              |
+| `0x50` | `CALL d`    | `i16`    | 6   | `--`             | empile l'adresse de retour, puis saut relatif                                                          |
+| `0x51` | `RETURN`    | —        | 4   | `--`             | dépile l'adresse de retour ; pile vide ⇒ `Fault::CallStackUnderflow`                                   |
+| `0x52` | `CALLX`     | —        | 7   | `t --`           | empile l'adresse de retour, puis saut à la cible **absolue** dépilée                                   |
+| `0x60` | `SENSE k`   | `u8`     | 8   | `-- v`           | capteur `k` (annexe E) ; inconnu ⇒ `Fault::BadSensor`                                                  |
+| `0x61` | `ACT k`     | `u8`     | 12  | `arg -- ok`      | action `k` (annexe E) ; inconnue ⇒ `Fault::BadAction` ; deuxième `ACT` du tour ⇒ `Fault::AlreadyActed` |
+| `0x70` | `RAND`      | —        | 5   | `-- v`           | tire une valeur aléatoire `v` fournie par l'hôte/environnement (rappel réseau K.3)                     |
+| `0x71` | `GAS`       | —        | 2   | `-- g`           | gaz restant du tour, **son propre coût déjà prélevé** (B.7)                                            |
+| `0xF0` | `TRACE`     | —        | 1   | `v --`           | ajoute `v` à la trace du tour ; aucun effet sur l'état                                                 |
 
 Tout autre octet ⇒ `Fault::BadOpcode`.
 
@@ -178,7 +187,7 @@ La seconde condition ne lit qu' **un octet**, celui de la cible (A.3). Une cible
 son alignement sur une frontière d'instruction, et un `0x43` situé au milieu d'un opérande est une destination légale.
 
 `JMP`, `JZ`, `JNZ`, `CALL`, `JMPX` et `CALLX` y sont soumis — pour `JZ` et `JNZ`, seulement lorsque la condition est
-vraie et que le saut a donc lieu. `RET` n'y est **pas** soumis : l'adresse qu'il dépile a été empilée par un `CALL` et
+vraie et que le saut a donc lieu. `RETURN` n'y est **pas** soumis : l'adresse qu'il dépile a été empilée par un `CALL`et
 désigne l'octet suivant cet appel ; exiger un `JUMPDEST` là reviendrait à imposer un marqueur après chaque appel.
 
 **Cible absolue — `JMPX` et `CALLX`.** Ces deux instructions ne portent pas de déplacement : elles **dépilent** leur
@@ -208,10 +217,15 @@ sauté. Il couvre aussi la cible **dépilée** hors de `[0, code_len)` de `JMPX`
 même raison observable.
 
 Les six instructions ajoutées par la `1.3.0` n'introduisent **aucune** chaîne : `BadConst` couvre l'index dépilé de
-`PUSHCX`, `BadJump` les cibles absolues, `StackUnderflow` les arguments manquants, et `SAR` ne faute jamais. La liste
+`CONSTX`, `BadJump` les cibles absolues, `StackUnderflow` les arguments manquants, et `SAR` ne faute jamais. La liste
 reste close à seize entrées.
 
-`BadHeader` fait exception : c'est une **erreur de chargement**, levée avant que l'exécution ne commence. Elle n'apparaît
+Les deux instructions ajoutées par la `1.9.0`, `LOAD k` et `STORE k`, n'en introduisent pas non plus : leur opérande
+`u8` couvre exactement `mem[0..256]`, donc `Fault::OutOfBounds` leur est **inatteignable** par construction, et
+`StackOverflow`/`StackUnderflow` couvrent les seuls refus qui leur restent.
+
+`BadHeader` fait exception : c'est une **erreur de chargement**, levée avant que l'exécution ne commence. Elle
+n'apparaît
 jamais dans les fautes d'un tour en cours — un programme qui ne charge pas n'est pas exécuté (K.3, K.8).
 
 ### B.6 Opérations binaires et décalages
@@ -275,10 +289,13 @@ C'est le même ordre 4-puis-5 qui fait qu'un `PUSH` sur pile pleine sans gaz res
 
 ### D.1 Gaz
 
-La table de gaz est celle de l'annexe B. Elle n'est ni monotone ni intuitive — `STORE` plus cher que `LOAD`, `SHR`
-plus cher que `SHL` — et c'est voulu. Elle est appliquée telle quelle.
+La table de gaz est celle de l'annexe B. Elle n'est ni monotone ni intuitive — `STOREX` plus cher que `LOADX`, `SHR`
+plus cher que `SHL` — et c'est voulu. Elle est appliquée telle quelle. `STORE`/`LOAD`, la forme à adresse constante
+de la `1.9.0`, coûtent un de moins que `STOREX`/`LOADX` : le `PUSHI16` qui disparaît, plus une remise supplémentaire
+pour l'accès qui n'a plus rien à dépiler.
 
-Budget par tour : `gas_budget`, au minimum `1` et au maximum `65535` puisqu'il est un `u16`. La valeur usuelle est `1000`.
+Budget par tour : `gas_budget`, au minimum `1` et au maximum `65535` puisqu'il est un `u16`. La valeur usuelle est
+`1000`.
 Le gaz non consommé n'est pas reporté d'un tour sur l'autre. `HALT` coûte `0`, donc un programme peut toujours s'arrêter
 proprement.
 
@@ -288,7 +305,7 @@ proprement.
 
 ### E.2 Déroulement d'un tour
 
-Pour le tour `t` (à partir de `1`), les agents sont traités dans l'**ordre croissant d'identifiant**. Pour chaque agent
+Pour le tour `t` (à partir de `1`), les agents sont traités dans l' **ordre croissant d'identifiant**. Pour chaque agent
 vivant :
 
 1. Instantané de l'état de l'agent et du monde.
@@ -350,41 +367,47 @@ C'est un masque de **présence**, jamais de quantité. Un voisin hors de la gril
 
 #### Les constantes du monde — `SENSE 10`, `11` et `12`
 
-`SENSE 10` et `SENSE 11` rendent les **index maximaux** de la grille, `x_max` et `y_max` (une grille de 4 colonnes rend `3`).
-`SENSE 12` rend `turns_max`, le nombre total de tours prévu pour la partie. Ces trois valeurs sont constantes pour toute la partie.
+`SENSE 10` et `SENSE 11` rendent les **index maximaux** de la grille, `x_max` et `y_max` (une grille de 4 colonnes rend
+`3`).
+`SENSE 12` rend `turns_max`, le nombre total de tours prévu pour la partie. Ces trois valeurs sont constantes pour toute
+la partie.
 
 #### `SENSE 13` — le masque des agents
 
 `SENSE 13` rend un entier de `0` à `15`, sur la même forme :
 
-| Bit | Valeur | Direction     | Vaut `1` si                                                  |
-|-----|--------|---------------|--------------------------------------------------------------|
-| `0` | `1`    | nord (`y-1`)  | la case voisine est occupée par un agent **vivant**           |
-| `1` | `2`    | est  (`x+1`)  | idem                                                         |
-| `2` | `4`    | sud  (`y+1`)  | idem                                                         |
-| `3` | `8`    | ouest (`x-1`) | idem                                                         |
+| Bit | Valeur | Direction     | Vaut `1` si                                         |
+|-----|--------|---------------|-----------------------------------------------------|
+| `0` | `1`    | nord (`y-1`)  | la case voisine est occupée par un agent **vivant** |
+| `1` | `2`    | est  (`x+1`)  | idem                                                |
+| `2` | `4`    | sud  (`y+1`)  | idem                                                |
+| `3` | `8`    | ouest (`x-1`) | idem                                                |
 
-Un agent mort ne compte pas (bit à `0`). Combiné à `SENSE 8`, il permet de prédire avec certitude le succès d'un déplacement :
+Un agent mort ne compte pas (bit à `0`). Combiné à `SENSE 8`, il permet de prédire avec certitude le succès d'un
+déplacement :
 si `(SENSE 8 | SENSE 13) & (1 << dir) == 0`, le déplacement vers `dir` réussira.
 
 ### E.4 Actions — `ACT k`, argument dépilé, issue rendue
 
 Une seule action réussie **ou échouée** par tour. Un second `ACT` lève `Fault::AlreadyActed`.
 
-| `k`   | Action | Argument                                                      | Effet                                                                                                                                                                  |
-|-------|--------|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `0`   | `MOVE` | `0`=nord (`y-1`), `1`=est, `2`=sud, `3`=ouest ; autre ⇒ échec | déplacement d'une case. Hors grille, case **murée**, ou case occupée par un agent **vivant** ⇒ **échec**. Réussite ⇒ `energy -= 1` en plus du décrément de tour.      |
-| `1`   | `TAKE` | ignoré                                                        | ramasse `min(ressource_case, 5)` ; ajouté à `carried`, retiré de la case                                                                                               |
-| `2`   | `DROP` | quantité                                                      | dépose `min(arg, carried)` sur la case ; `arg < 0` ⇒ **échec**                                                                                                         |
-| `3`   | `EAT`  | quantité                                                      | convertit `k = min(arg, carried)` charges : `carried -= k`, `energy += eat_rate × k` ; `arg < 0` ⇒ **échec**                                                           |
-| autre | —      | —                                                             | `Fault::BadAction`                                                                                                                                                     |
+| `k`   | Action | Argument                                                      | Effet                                                                                                                                                            |
+|-------|--------|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `0`   | `MOVE` | `0`=nord (`y-1`), `1`=est, `2`=sud, `3`=ouest ; autre ⇒ échec | déplacement d'une case. Hors grille, case **murée**, ou case occupée par un agent **vivant** ⇒ **échec**. Réussite ⇒ `energy -= 1` en plus du décrément de tour. |
+| `1`   | `TAKE` | ignoré                                                        | ramasse `min(ressource_case, 5)` ; ajouté à `carried`, retiré de la case                                                                                         |
+| `2`   | `DROP` | quantité                                                      | dépose `min(arg, carried)` sur la case ; `arg < 0` ⇒ **échec**                                                                                                   |
+| `3`   | `EAT`  | quantité                                                      | convertit `k = min(arg, carried)` charges : `carried -= k`, `energy += eat_rate × k` ; `arg < 0` ⇒ **échec**                                                     |
+| autre | —      | —                                                             | `Fault::BadAction`                                                                                                                                               |
 
-Un **échec** d'action n'est pas une faute : le tour se poursuit normalement. Une **faute** interrompt le tour et déclenche l'annulation décrite en E.2.
+Un **échec** d'action n'est pas une faute : le tour se poursuit normalement. Une **faute** interrompt le tour et
+déclenche l'annulation décrite en E.2.
 
-**`ACT k` empile son issue** : `arg -- ok`, `ok` valant `1` en cas de succès, `0` en cas d'échec. Toute autre valeur est **réservée**.
+**`ACT k` empile son issue** : `arg -- ok`, `ok` valant `1` en cas de succès, `0` en cas d'échec. Toute autre valeur est
+**réservée**.
 `ACT` dépile son argument puis empile son issue : il ne peut pas produire `Fault::StackOverflow`.
 
-`EAT` convertit des ressources portées en énergie avec un taux `eat_rate` (défaut : `10` points d'énergie par ressource).
+`EAT` convertit des ressources portées en énergie avec un taux `eat_rate` (défaut : `10` points d'énergie par
+ressource).
 Comme pour `DROP`, l'argument est borné par `carried` et un argument négatif provoque un échec.
 
 ### E.5 Fin de partie & Conditions de victoire
@@ -393,6 +416,7 @@ La partie s'arrête au tour `turns_max` (`500` usuel), ou dès qu'il ne reste au
 Le test a lieu après le passage de tous les agents du tour : un tour commencé est toujours joué en entier.
 
 Règles de départage déterministes :
+
 1. L'agent avec le plus grand `carried`.
 2. À égalité, l'agent avec la plus grande `energy`.
 3. À égalité encore, **match nul** (`winner: null`).
@@ -405,13 +429,14 @@ L'identifiant ne départage jamais. Deux programmes identiques réalisant le mê
 
 ### H.1 Numérotation
 
-Ce document porte un numéro `MAJEUR.MINEUR.CORRECTIF`, annoncé en tête et repris dans les messages réseau (`READY`, annexe K).
+Ce document porte un numéro `MAJEUR.MINEUR.CORRECTIF`, annoncé en tête et repris dans les messages réseau (`READY`,
+annexe K).
 
-| Rang        | Ce qui le fait bouger                                                                                |
-|-------------|-------------------------------------------------------------------------------------------------------|
-| `MAJEUR`    | des règles incompatibles : un artefact conforme à l'une n'a aucun sens pour l'autre                   |
+| Rang        | Ce qui le fait bouger                                                                                  |
+|-------------|--------------------------------------------------------------------------------------------------------|
+| `MAJEUR`    | des règles incompatibles : un artefact conforme à l'une n'a aucun sens pour l'autre                    |
 | `MINEUR`    | tout changement **observable** dans un artefact normatif — un gaz, une faute, un transcript de rappels |
-| `CORRECTIF` | une correction éditoriale sans effet observable : formulation, exemple, coquille                      |
+| `CORRECTIF` | une correction éditoriale sans effet observable : formulation, exemple, coquille                       |
 
 **Règle de comparabilité.** Deux artefacts ne se comparent que si leurs `MAJEUR` et `MINEUR` sont égaux ; le
 `CORRECTIF` est ignoré.
@@ -435,11 +460,14 @@ Aucun port par défaut n'est imposé.
 
 ### K.1 Modèle : la machine sans le monde
 
-Le serveur **exécute lui-même** le programme déposé, dans sa propre machine, mais il ne détient **aucun monde** : ni grille,
-ni ressources, ni second agent. Ce que `SENSE`, `ACT` et `RAND` demanderaient à un monde, le serveur le demande au **client**,
+Le serveur **exécute lui-même** le programme déposé, dans sa propre machine, mais il ne détient **aucun monde** : ni
+grille,
+ni ressources, ni second agent. Ce que `SENSE`, `ACT` et `RAND` demanderaient à un monde, le serveur le demande au
+**client**,
 par un aller-retour de rappel : le client agit comme un environnement d'exécution distant.
 
-Le serveur applique purement les règles de B.1–B.7 à un programme, une mémoire initiale et un budget de gaz fournis par le
+Le serveur applique purement les règles de B.1–B.7 à un programme, une mémoire initiale et un budget de gaz fournis par
+le
 client, et délègue au client chaque interaction avec l'environnement extérieur.
 
 Conséquence directe : **aucun choix n'est fait côté serveur.** Ni carte, ni aléa serveur — `RAND` est délégué au client.
@@ -449,38 +477,38 @@ Conséquence directe : **aucun choix n'est fait côté serveur.** Ni carte, ni a
 Toute trame, dans les deux sens, respecte la structure binaire suivante :
 
 | Décalage | Taille | Champ     | Contrainte                                               |
-|----------|--------|-----------|-----------------------------------------------------------|
-| `0`      | 1      | `type`    | `0x11..=0x1D`, voir table K.3                             |
+|----------|--------|-----------|----------------------------------------------------------|
+| `0`      | 1      | `type`    | `0x11..=0x1D`, voir table K.3                            |
 | `1`      | 4      | `len`     | `u32` **gros-boutiste**, borne selon le sens, ci-dessous |
-| `5`      | `len`  | `payload` | Charge utile JSON ou binaire                              |
+| `5`      | `len`  | `payload` | Charge utile JSON ou binaire                             |
 
 Bornes normatives de taille :
 
-| Sens             | Borne de `len` | Justification                                                                                             |
-|------------------|----------------|------------------------------------------------------------------------------------------------------------|
+| Sens             | Borne de `len` | Justification                                                                                               |
+|------------------|----------------|-------------------------------------------------------------------------------------------------------------|
 | client → serveur | `98307`        | taille maximale d'un `.pbc` selon A.1 : `8 + 8 × 4095 + 4 + 65535`. `SUBMIT` est la seule trame volumineuse |
-| serveur → client | `4194304`      | un `RESULT` porte au plus `256 + 65535` entiers `i64` écrits en JSON (mémoire dense de B.1 plus la trace)  |
+| serveur → client | `4194304`      | un `RESULT` porte au plus `256 + 65535` entiers `i64` écrits en JSON (mémoire dense de B.1 plus la trace)   |
 
 Une trame annonçant un `len` supérieur **DOIT** être rejetée **avant toute allocation**.
 Un `type` hors de `0x11..=0x1D` **DOIT** être rejeté et provoquer une erreur `bad_frame` puis la fermeture de connexion.
 
 ### K.3 Messages
 
-| `type` | Nom       | Sens             | Charge utile                                        |
-|--------|-----------|------------------|------------------------------------------------------|
-| `0x11` | `OPEN`    | client → serveur | JSON — version du protocole, nom optionnel           |
-| `0x12` | `READY`   | serveur → client | JSON — spécification, version, bornes du serveur     |
-| `0x13` | `SUBMIT`  | client → serveur | **octets bruts** du fichier `.pbc`                   |
-| `0x14` | `SESSION` | serveur → client | JSON — identifiant de session, empreinte, taille     |
-| `0x15` | `EXEC`    | client → serveur | JSON — session, mémoire initiale, budget             |
-| `0x16` | `SENSE`   | serveur → client | JSON — numéro de capteur (rappel, E.3)               |
-| `0x17` | `SENSED`  | client → serveur | JSON — valeur rendue, ou faute                       |
-| `0x18` | `ACT`     | serveur → client | JSON — action et argument (rappel, E.4)              |
-| `0x19` | `ACTED`   | client → serveur | JSON — issue de l'action                             |
-| `0x1A` | `RAND`    | serveur → client | JSON — vide `{}` (rappel, K.6)                       |
-| `0x1B` | `DREW`    | client → serveur | JSON — valeur tirée                                  |
-| `0x1C` | `RESULT`  | serveur → client | JSON — mémoire finale, gaz, faute, action, trace     |
-| `0x1D` | `ERROR`   | serveur → client | JSON — code et message                               |
+| `type` | Nom       | Sens             | Charge utile                                     |
+|--------|-----------|------------------|--------------------------------------------------|
+| `0x11` | `OPEN`    | client → serveur | JSON — version du protocole, nom optionnel       |
+| `0x12` | `READY`   | serveur → client | JSON — spécification, version, bornes du serveur |
+| `0x13` | `SUBMIT`  | client → serveur | **octets bruts** du fichier `.pbc`               |
+| `0x14` | `SESSION` | serveur → client | JSON — identifiant de session, empreinte, taille |
+| `0x15` | `EXEC`    | client → serveur | JSON — session, mémoire initiale, budget         |
+| `0x16` | `SENSE`   | serveur → client | JSON — numéro de capteur (rappel, E.3)           |
+| `0x17` | `SENSED`  | client → serveur | JSON — valeur rendue, ou faute                   |
+| `0x18` | `ACT`     | serveur → client | JSON — action et argument (rappel, E.4)          |
+| `0x19` | `ACTED`   | client → serveur | JSON — issue de l'action                         |
+| `0x1A` | `RAND`    | serveur → client | JSON — vide `{}` (rappel, K.6)                   |
+| `0x1B` | `DREW`    | client → serveur | JSON — valeur tirée                              |
+| `0x1C` | `RESULT`  | serveur → client | JSON — mémoire finale, gaz, faute, action, trace |
+| `0x1D` | `ERROR`   | serveur → client | JSON — code et message                           |
 
 `SUBMIT` transporte les octets bruts du fichier bytecode `.pbc`, sans encodage intermédiaire.
 
@@ -495,7 +523,7 @@ OPEN     {
 READY    {
   "proto": 1,
   "spec": "PBC1",
-  "spec_version": "1.8.0",
+  "spec_version": "1.9.0",
   "sessions_max": 16
 }
 
@@ -506,11 +534,16 @@ SESSION  {
   "pbc_sha256": "…",
   "code_len": 42
 }          // "session" est une chaîne opaque : voir K.4. "pbc_sha256" et "code_len" attestent
-           // du chargement conforme du binaire
+// du chargement conforme du binaire
 
 EXEC     {
   "session": "1",
-  "mem": [0, 0, 100, "… 253 valeurs de plus …"],
+  "mem": [
+    0,
+    0,
+    100,
+    "… 253 valeurs de plus …"
+  ],
   "budget": 1000
 }
 
@@ -538,7 +571,12 @@ DREW     {
 }
 
 RESULT   {
-  "mem": [0, 0, 98, "… 253 valeurs de plus …"],
+  "mem": [
+    0,
+    0,
+    98,
+    "… 253 valeurs de plus …"
+  ],
   "gas_used": 137,
   "fault": null,
   "act": {
@@ -546,7 +584,10 @@ RESULT   {
     "arg": 0,
     "ok": true
   },
-  "trace": [1, 7]
+  "trace": [
+    1,
+    7
+  ]
 }
 
 ERROR    {
@@ -570,7 +611,9 @@ Sur le fil : `session: String`, de 1 à 64 caractères pris dans `[A-Za-z0-9_-]`
 hors de ces bornes ou de ce jeu de caractères est un `bad_frame`.
 
 Conséquences normatives :
-* Le client **NE DOIT PAS** interpréter un identifiant reçu (ni arithmétique, ni ordre). Il le renvoie **verbatim** dans ses `EXEC`.
+
+* Le client **NE DOIT PAS** interpréter un identifiant reçu (ni arithmétique, ni ordre). Il le renvoie **verbatim** dans
+  ses `EXEC`.
 * Deux `SUBMIT` du même programme peuvent rendre le même identifiant ou deux identifiants distincts.
 * Le client ne doit pas réutiliser un identifiant sur une autre connexion TCP.
 
@@ -583,32 +626,40 @@ Greeting  ── OPEN ──→  Idle  ⇄  Executing
 
 * `Greeting` n'accepte que `OPEN` (répond `READY`).
 * `Idle` accepte `SUBMIT` (répond `SESSION` ou `ERROR bad_program`) et `EXEC` (bascule en `Executing`).
-* `Executing` n'accepte que la réplique exacte du rappel en cours (`SENSED`, `ACTED` ou `DREW`) ; toute autre trame y entraîne
+* `Executing` n'accepte que la réplique exacte du rappel en cours (`SENSED`, `ACTED` ou `DREW`) ; toute autre trame y
+  entraîne
   `ERROR unexpected_message` puis la fermeture de la connexion.
-* Une session reste chargée au moins jusqu'à la fermeture de sa connexion. Un `EXEC` ne détruit pas la session : un programme
+* Une session reste chargée au moins jusqu'à la fermeture de sa connexion. Un `EXEC` ne détruit pas la session : un
+  programme
   peut être exécuté plusieurs fois.
 * Pas de pipelining : une seule exécution active par connexion.
 
 ### K.5 Le protocole est la fonction d'exécution, livrée par rappels
 
 `RESULT` est fonction pure de `(programme, mémoire initiale, budget, réponses aux rappels)` :
+
 * **Reproductibilité** : rejouer les mêmes trames rend le même `RESULT`, octet pour octet.
-* **Transcript normatif** : deux serveurs conformes émettent exactement la même suite de rappels `SENSE`/`ACT`/`RAND` dans le même ordre.
+* **Transcript normatif** : deux serveurs conformes émettent exactement la même suite de rappels `SENSE`/`ACT`/`RAND`
+  dans le même ordre.
 
 ### K.6 Les rappels
 
-Un `SENSE` demande la valeur du capteur `k` (E.3), un `ACT` demande l'exécution de l'action `kind`/`arg` (E.4), un `RAND`
-demande un tirage au client. Le client répond respectivement `SENSED`, `ACTED`, `DREW` — strictement dans l'ordre où le serveur
+Un `SENSE` demande la valeur du capteur `k` (E.3), un `ACT` demande l'exécution de l'action `kind`/`arg` (E.4), un`RAND`
+demande un tirage au client. Le client répond respectivement `SENSED`, `ACTED`, `DREW` — strictement dans l'ordre où le
+serveur
 les pose.
 
-Un `RESULT` n'est émis que si les rappels nécessaires ont tous abouti ; si un rappel échoue ou si le client coupe la connexion,
+Un `RESULT` n'est émis que si les rappels nécessaires ont tous abouti ; si un rappel échoue ou si le client coupe la
+connexion,
 celle-ci est close sans émission de `RESULT`.
 
 ### K.7 Déterminisme et bornes
 
-Le protocole ne comporte aucun choix non déterministe côté serveur. Tout l'aléa et les interactions proviennent du client via les rappels.
+Le protocole ne comporte aucun choix non déterministe côté serveur. Tout l'aléa et les interactions proviennent du
+client via les rappels.
 
-`RAND` coûtant 5 unités de gaz (D.1), il y a au plus `budget / 5` rappels `RAND` par exécution (200 pour un budget usuel de 1000).
+`RAND` coûtant 5 unités de gaz (D.1), il y a au plus `budget / 5` rappels `RAND` par exécution (200 pour un budget usuel
+de 1000).
 `sessions_max` (annoncé dans `READY`) borne le nombre de sessions simultanées sur une connexion.
 
 ### K.8 Erreurs et robustesse
@@ -618,13 +669,14 @@ Le protocole ne comporte aucun choix non déterministe côté serveur. Tout l'al
 | `bad_frame`          | `len` hors bornes, `type` inconnu, JSON invalide, `session` invalide |
 | `bad_proto`          | version de protocole non gérée                                       |
 | `bad_program`        | les octets du `SUBMIT` ne passent pas le chargeur de A.1             |
-| `too_many_sessions`  | `sessions_max` déjà atteint                                           |
-| `no_such_session`    | l'`EXEC` nomme une session inconnue de cette connexion                |
-| `bad_memory`         | `mem` n'a pas exactement 256 valeurs                                  |
+| `too_many_sessions`  | `sessions_max` déjà atteint                                          |
+| `no_such_session`    | l'`EXEC` nomme une session inconnue de cette connexion               |
+| `bad_memory`         | `mem` n'a pas exactement 256 valeurs                                 |
 | `bad_budget`         | `budget` nul ou hors bornes (`1..=65535`)                            |
-| `unexpected_message` | trame valide, mais interdite dans l'état courant (K.4)                |
+| `unexpected_message` | trame valide, mais interdite dans l'état courant (K.4)               |
 
-`too_many_sessions` et `no_such_session` **NE ferment PAS** la connexion : la connexion reste utilisable pour d'autres requêtes.
+`too_many_sessions` et `no_such_session` **NE ferment PAS** la connexion : la connexion reste utilisable pour d'autres
+requêtes.
 Tout autre code de ce tableau entraîne l'envoi de `ERROR` puis la fermeture immédiate de la connexion.
 
 ### K.9 Hors périmètre en v1
@@ -632,4 +684,5 @@ Tout autre code de ce tableau entraîne l'envoi de `ERROR` puis la fermeture imm
 * **Aucune authentification, aucun chiffrement.**
 * **Aucune libération explicite de session** : la session vit au moins jusqu'à la fermeture de la connexion TCP.
 * **Aucun pipelining** : une seule exécution en cours par connexion TCP.
-* **Aucune persistance de mémoire côté serveur entre deux exécutions** : chaque `EXEC` fournit sa mémoire initiale de 256 `i64`.
+* **Aucune persistance de mémoire côté serveur entre deux exécutions** : chaque `EXEC` fournit sa mémoire initiale de
+  256 `i64`.
