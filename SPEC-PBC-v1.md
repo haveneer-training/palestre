@@ -25,9 +25,9 @@ Les mots **DOIT**, **NE DOIT PAS**, **DEVRAIT** et **PEUT** ont le sens habituel
 
 ---
 
-## Annexe A — Format du fichier `.pbc`
+## <a id="annexe-a"></a>Annexe A — Format du fichier `.pbc`
 
-### A.1 Structure
+### <a id="a1"></a>A.1 Structure
 
 | Décalage | Taille            | Champ         | Contrainte                           |
 |----------|-------------------|---------------|--------------------------------------|
@@ -42,13 +42,13 @@ Les mots **DOIT**, **NE DOIT PAS**, **DEVRAIT** et **PEUT** ont le sens habituel
 Aucune somme de contrôle. Le fichier **DOIT** faire exactement la taille impliquée par ses champs ; tout octet
 excédentaire ou manquant est une erreur.
 
-### A.2 Erreurs de chargement
+### <a id="a2"></a>A.2 Erreurs de chargement
 
 Toute violation ci-dessus produit `Fault::BadHeader`. Le chargement **NE DOIT PAS** provoquer de `panic`, d'allocation
 non bornée, ni de lecture hors limites, quelle que soit la suite d'octets fournie — y compris une suite aléatoire,
 tronquée ou construite pour nuire.
 
-### A.3 Note de conception
+### <a id="a3"></a>A.3 Note de conception
 
 Une cible de saut **DOIT** porter le marqueur `JUMPDEST` (`0x43`, annexe B.3). Ce qui est regardé est **l'octet lui-même
 à l'adresse visée**, sans aucune analyse préalable du code : il n'y a pas de table de destinations valides à construire
@@ -64,9 +64,9 @@ statique du bytecode n'en devient pas triviale pour autant — elle reste l'obje
 
 ---
 
-## Annexe B — Jeu d'instructions et sémantique
+## <a id="annexe-b"></a>Annexe B — Jeu d'instructions et sémantique
 
-### B.1 Machine
+### <a id="b1"></a>B.1 Machine
 
 | Ressource              | Taille                                     | Dépassement                |
 |------------------------|--------------------------------------------|----------------------------|
@@ -78,7 +78,7 @@ statique du bytecode n'en devient pas triviale pour autant — elle reste l'obje
 La mémoire est **persistante d'un tour à l'autre**. La pile de données et la pile d'appels sont **vidées au début de
 chaque tour**. Le compteur ordinal (`pc`) repart de `0` à chaque tour.
 
-### B.2 Cycle d'exécution
+### <a id="b2"></a>B.2 Cycle d'exécution
 
 À chaque pas, dans cet ordre :
 
@@ -100,7 +100,7 @@ L'ordre des étapes 4 et 5 est normatif et observable : un `PUSH` sur une pile p
 `OutOfGas` et non `StackOverflow`. `gas_used` et `fault` étant normatifs, une machine qui prélève le gaz
 après exécution est détectée même lorsque l'état final est identique.
 
-### B.3 Jeu d'instructions
+### <a id="b3"></a>B.3 Jeu d'instructions
 
 **Notation de pile — clause à lire deux fois.** `a b -- r` signifie que `b` est au sommet **avant** l'opération, `r` au
 sommet **après** l'opération. Le nom le plus proche de `--` est celui du sommet, dans les deux cas : c'est lui qui se
@@ -167,7 +167,7 @@ usuel, et `65535` au maximum absolu, `gas_budget` étant un `u16`.
 Cette borne est ce qui rend tenable la règle de non-allocation dans la boucle d'un tour : le tampon de trace est
 dimensionné une fois pour le budget de la partie, jamais pendant le tour. Elle fixe aussi la borne de trame de K.2.
 
-### B.4 Calcul des sauts — attention
+### <a id="b4"></a>B.4 Calcul des sauts — attention
 
 L'adresse de saut est **relative au premier octet de l'instruction suivante**, pas à celui de l'instruction de saut :
 
@@ -200,7 +200,7 @@ La cible d'un saut dépilé est absolue et non relative parce qu'un déplacement
 l'instruction qui le lit : une table de sauts cesserait d'être relogeable, et chaque entrée devrait être recalculée à
 l'assemblage — c'est-à-dire qu'on retrouverait l'opérande immédiat en payant une dépile de plus.
 
-### B.5 Liste exhaustive des fautes
+### <a id="b5"></a>B.5 Liste exhaustive des fautes
 
 `BadHeader`, `BadConst`, `BadOpcode`, `Truncated`, `PcOutOfRange`, `BadJump`, `StackUnderflow`, `StackOverflow`,
 `CallStackOverflow`, `CallStackUnderflow`, `OutOfGas`, `DivByZero`, `OutOfBounds`, `BadSensor`, `BadAction`,
@@ -228,7 +228,7 @@ Les deux instructions ajoutées par la `1.9.0`, `LOAD k` et `STORE k`, n'en intr
 n'apparaît
 jamais dans les fautes d'un tour en cours — un programme qui ne charge pas n'est pas exécuté (K.3, K.8).
 
-### B.6 Opérations binaires et décalages
+### <a id="b6"></a>B.6 Opérations binaires et décalages
 
 `AND`, `OR`, `XOR` et `BNOT` opèrent sur les 64 bits de la représentation en complément à deux. Rien à préciser de
 plus : le résultat est un motif de bits, réinterprété en `i64`.
@@ -263,7 +263,7 @@ l'infini** : `-7 DIV 2` vaut `-3`, `-7 SAR 1` vaut `-4`. Les deux ne coïncident
 **`NOT` et `BNOT` ne sont pas la même opération.** `NOT` (`0x23`) est logique et rend `0` ou `1` ; `BNOT` (`0x29`) est
 le complément à un. `NOT 0` vaut `1`, `BNOT 0` vaut `-1`, et `BNOT 5` vaut `-6`.
 
-### B.7 `GAS` — ce que la machine lit d'elle-même
+### <a id="b7"></a>B.7 `GAS` — ce que la machine lit d'elle-même
 
 `GAS` (`0x71`) empile le gaz restant du tour. La valeur empilée est celle qui reste **après** le prélèvement du coût
 de `GAS` lui-même, et cette clause est normative.
@@ -285,9 +285,9 @@ C'est le même ordre 4-puis-5 qui fait qu'un `PUSH` sur pile pleine sans gaz res
 
 ---
 
-## Annexe D — Gaz
+## <a id="annexe-d"></a>Annexe D — Gaz
 
-### D.1 Gaz
+### <a id="d1"></a>D.1 Gaz
 
 La table de gaz est celle de l'annexe B. Elle n'est ni monotone ni intuitive — `STOREX` plus cher que `LOADX`, `SHR`
 plus cher que `SHL` — et c'est voulu. Elle est appliquée telle quelle. `STORE`/`LOAD`, la forme à adresse constante
@@ -301,9 +301,9 @@ proprement.
 
 ---
 
-## Annexe E — Règles des tours et de victoire
+## <a id="annexe-e"></a>Annexe E — Règles des tours et de victoire
 
-### E.2 Déroulement d'un tour
+### <a id="e2"></a>E.2 Déroulement d'un tour
 
 Pour le tour `t` (à partir de `1`), les agents sont traités dans l' **ordre croissant d'identifiant**. Pour chaque agent
 vivant :
@@ -316,7 +316,7 @@ vivant :
 5. Décrément d'énergie du tour : `energy -= 1`. Ce décrément s'applique **même en cas de faute**.
 6. Si `energy <= 0` : `alive = 0`, et les ressources portées sont déposées sur la case courante.
 
-### E.3 Capteurs — `SENSE k`
+### <a id="e3"></a>E.3 Capteurs — `SENSE k`
 
 | `k`   | Valeur rendue                                                               |
 |-------|-----------------------------------------------------------------------------|
@@ -387,7 +387,7 @@ Un agent mort ne compte pas (bit à `0`). Combiné à `SENSE 8`, il permet de pr
 déplacement :
 si `(SENSE 8 | SENSE 13) & (1 << dir) == 0`, le déplacement vers `dir` réussira.
 
-### E.4 Actions — `ACT k`, argument dépilé, issue rendue
+### <a id="e4"></a>E.4 Actions — `ACT k`, argument dépilé, issue rendue
 
 Une seule action réussie **ou échouée** par tour. Un second `ACT` lève `Fault::AlreadyActed`.
 
@@ -410,7 +410,7 @@ déclenche l'annulation décrite en E.2.
 ressource).
 Comme pour `DROP`, l'argument est borné par `carried` et un argument négatif provoque un échec.
 
-### E.5 Fin de partie & Conditions de victoire
+### <a id="e5"></a>E.5 Fin de partie & Conditions de victoire
 
 La partie s'arrête au tour `turns_max` (`500` usuel), ou dès qu'il ne reste au plus qu'un agent vivant.
 Le test a lieu après le passage de tous les agents du tour : un tour commencé est toujours joué en entier.
@@ -425,9 +425,9 @@ L'identifiant ne départage jamais. Deux programmes identiques réalisant le mê
 
 ---
 
-## Annexe H — Versions et évolutions
+## <a id="annexe-h"></a>Annexe H — Versions et évolutions
 
-### H.1 Numérotation
+### <a id="h1"></a>H.1 Numérotation
 
 Ce document porte un numéro `MAJEUR.MINEUR.CORRECTIF`, annoncé en tête et repris dans les messages réseau (`READY`,
 annexe K).
@@ -443,9 +443,9 @@ annexe K).
 
 ---
 
-## Annexe K — Protocole d'exécution distante
+## <a id="annexe-k"></a>Annexe K — Protocole d'exécution distante
 
-### K.0 Statut
+### <a id="k0"></a>K.0 Statut
 
 Cette annexe est **normative**. Deux implémentations conformes **DOIVENT** interopérer dans les deux sens : le client
 de l'une contre le serveur de l'autre, avec des trames identiques et le même `RESULT` pour les mêmes entrées.
@@ -458,7 +458,7 @@ palestre exec --listen <adresse>
 
 Aucun port par défaut n'est imposé.
 
-### K.1 Modèle : la machine sans le monde
+### <a id="k1"></a>K.1 Modèle : la machine sans le monde
 
 Le serveur **exécute lui-même** le programme déposé, dans sa propre machine, mais il ne détient **aucun monde** : ni
 grille,
@@ -472,7 +472,7 @@ client, et délègue au client chaque interaction avec l'environnement extérieu
 
 Conséquence directe : **aucun choix n'est fait côté serveur.** Ni carte, ni aléa serveur — `RAND` est délégué au client.
 
-### K.2 Cadrage
+### <a id="k2"></a>K.2 Cadrage
 
 Toute trame, dans les deux sens, respecte la structure binaire suivante :
 
@@ -492,7 +492,7 @@ Bornes normatives de taille :
 Une trame annonçant un `len` supérieur **DOIT** être rejetée **avant toute allocation**.
 Un `type` hors de `0x11..=0x1D` **DOIT** être rejeté et provoquer une erreur `bad_frame` puis la fermeture de connexion.
 
-### K.3 Messages
+### <a id="k3"></a>K.3 Messages
 
 | `type` | Nom       | Sens             | Charge utile                                     |
 |--------|-----------|------------------|--------------------------------------------------|
@@ -605,7 +605,7 @@ est refusé comme `bad_frame`.
 versionne les règles d'exécution. Le serveur ne doit pas refuser une connexion sur le seul motif d'une `spec_version`
 différente : il annonce sa version dans `READY`.
 
-### K.4 L'identifiant de session est opaque
+### <a id="k4"></a>K.4 L'identifiant de session est opaque
 
 Sur le fil : `session: String`, de 1 à 64 caractères pris dans `[A-Za-z0-9_-]`, comparé **octet pour octet**. Un champ
 hors de ces bornes ou de ce jeu de caractères est un `bad_frame`.
@@ -634,7 +634,7 @@ Greeting  ── OPEN ──→  Idle  ⇄  Executing
   peut être exécuté plusieurs fois.
 * Pas de pipelining : une seule exécution active par connexion.
 
-### K.5 Le protocole est la fonction d'exécution, livrée par rappels
+### <a id="k5"></a>K.5 Le protocole est la fonction d'exécution, livrée par rappels
 
 `RESULT` est fonction pure de `(programme, mémoire initiale, budget, réponses aux rappels)` :
 
@@ -642,7 +642,7 @@ Greeting  ── OPEN ──→  Idle  ⇄  Executing
 * **Transcript normatif** : deux serveurs conformes émettent exactement la même suite de rappels `SENSE`/`ACT`/`RAND`
   dans le même ordre.
 
-### K.6 Les rappels
+### <a id="k6"></a>K.6 Les rappels
 
 Un `SENSE` demande la valeur du capteur `k` (E.3), un `ACT` demande l'exécution de l'action `kind`/`arg` (E.4), un`RAND`
 demande un tirage au client. Le client répond respectivement `SENSED`, `ACTED`, `DREW` — strictement dans l'ordre où le
@@ -653,7 +653,7 @@ Un `RESULT` n'est émis que si les rappels nécessaires ont tous abouti ; si un 
 connexion,
 celle-ci est close sans émission de `RESULT`.
 
-### K.7 Déterminisme et bornes
+### <a id="k7"></a>K.7 Déterminisme et bornes
 
 Le protocole ne comporte aucun choix non déterministe côté serveur. Tout l'aléa et les interactions proviennent du
 client via les rappels.
@@ -662,7 +662,7 @@ client via les rappels.
 de 1000).
 `sessions_max` (annoncé dans `READY`) borne le nombre de sessions simultanées sur une connexion.
 
-### K.8 Erreurs et robustesse
+### <a id="k8"></a>K.8 Erreurs et robustesse
 
 | `code`               | Cause                                                                |
 |----------------------|----------------------------------------------------------------------|
@@ -679,7 +679,7 @@ de 1000).
 requêtes.
 Tout autre code de ce tableau entraîne l'envoi de `ERROR` puis la fermeture immédiate de la connexion.
 
-### K.9 Hors périmètre en v1
+### <a id="k9"></a>K.9 Hors périmètre en v1
 
 * **Aucune authentification, aucun chiffrement.**
 * **Aucune libération explicite de session** : la session vit au moins jusqu'à la fermeture de la connexion TCP.

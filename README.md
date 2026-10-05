@@ -10,17 +10,17 @@
 
 Bienvenue dans le projet **Palestre**. Vous allez implémenter une **machine virtuelle déterministe**, le **format
 binaire** qu'elle exécute, et un **exécuteur distant** permettant d'exécuter des programmes agents via le réseau.
-À l'échelle réduite, c'est exactement ce qui fait tourner un *smart contract* ou une fonction *edge* : un bytecode,
+À l'échelle réduite, c'est exactement ce qui fait tourner un [*smart contract*](https://ethereum.org/fr/developers/docs/smart-contracts/) ou une fonction *edge* : un bytecode,
 une machine à pile, un compteur de gaz, un état, et un protocole d'exécution que toute implémentation correcte
 doit reproduire à l'identique.
 
 **La spécification est commune à tous les groupes.** C'est la contrainte centrale du projet : votre bytecode devra
 tourner sur la machine d'un autre groupe, et votre serveur d'exécution devra produire exactement le même résultat,
 les mêmes traces, les mêmes fautes et le même gaz consommé que ceux des autres groupes pour un programme donné.
-Une divergence d'un seul bit ou d'une seule unité de gaz est ce que l'industrie appelle un *consensus bug*. Vous allez
+Une divergence d'un seul bit ou d'une seule unité de gaz est ce que l'industrie appelle un [*consensus bug*](https://github.com/bitcoin/bips/blob/master/bip-0050.mediawiki). Vous allez
 en trouver — c'est le but.
 
-Le sujet se compose de deux documents : le présent **`SUJET.md`** et la spécification normative **`SPEC-PBC-v1.md`** — en
+Le sujet se compose de deux documents : le présent document et la spécification normative **[`SPEC-PBC-v1.md`](SPEC-PBC-v1.md)** — en
 cas de contradiction, c'est elle qui fait foi, lisez-la en entier avant d'écrire une ligne.
 
 ### Pourquoi ce sujet pour vos deux filières
@@ -28,21 +28,21 @@ cas de contradiction, c'est elle qui fait foi, lisez-la en entier avant d'écrir
 | Ce que vous écrivez              | Ce que ça devient en IBC       | Ce que ça devient en IW                |
 |----------------------------------|--------------------------------|----------------------------------------|
 | Bytecode `PBC`                   | bytecode EVM, eBPF de Solana   | bytecode WebAssembly                   |
-| Budget de gaz par tour           | `gas limit`, coût d'exécution  | quota CPU d'une fonction *edge*        |
+| Budget de gaz par tour           | `gas limit`, coût d'exécution  | [quota CPU](https://vercel.com/docs/functions/limitations) d'une fonction *edge* |
 | Empreinte et persistance d'état  | *state root*                   | idempotence et rejeu d'un pipeline     |
 | Divergence entre implémentations | *consensus bug*, *chain split* | non-déterminisme d'un cache distribué  |
 | Vérificateur de bytecode (bonus) | vérificateur EVM / eBPF        | validation d'un module WASM non fiable |
 
 **Le pont avec WebAssembly est plus direct que la métaphore.** WASM est lui aussi une machine à pile ; son format
 binaire commence par un nombre magique (`\0asm`) suivi d'une version et de sections typées, exactement comme l'en-tête
-`PBC1` de l'annexe A ; son exécution est spécifiée pour être déterministe ; et les runtimes qui l'hébergent mesurent le
+`PBC1` de l'[annexe A](SPEC-PBC-v1.md#annexe-a) ; son exécution est spécifiée pour être déterministe ; et les runtimes qui l'hébergent mesurent le
 travail effectué par un compteur — le *fuel* de `wasmtime` est le cousin de votre budget de gaz.
 
 Deux points valent d'être retenus pour la suite. D'abord, **tout module WASM est validé avant d'être exécuté** :
 typage de la pile, cohérence des branchements, bornes mémoire. C'est ce que fait le bonus « vérificateur statique » du
 §6, en miniature. Ensuite, **WASM n'a pas de saut vers une adresse arbitraire** : son flot de contrôle est structuré en
 blocs et en branchements relatifs, précisément pour que cette validation reste faisable en une passe linéaire.
-`PBC v1` fait le choix inverse et l'assume (annexe A.3) — vous découvrirez en implémentant le vérificateur pourquoi
+`PBC v1` fait le choix inverse et l'assume ([annexe A.3](SPEC-PBC-v1.md#a3)) — vous découvrirez en implémentant le vérificateur pourquoi
 WASM, l'EVM avec son `JUMPDEST` et eBPF avec ses boucles bornées ont tous reculé devant le saut libre.
 
 Enfin, l'écosystème WASM se valide comme votre projet : une **suite de tests de conformité commune** que chaque runtime
@@ -71,7 +71,7 @@ Ils sont la spécification. Vous devez les garantir et savoir les **démontrer**
 2. **Terminaison** — toute exécution s'arrête. Un agent qui épuise son budget de gaz est interrompu (`OutOfGas`).
 3. **Atomicité du tour** — une faute annule les effets du tour sur l'agent et son état (mémoire). Ne sont pas annulés :
    le gaz consommé, la trace, et l'action tentée. La spécification est précise
-   là-dessus (Annexe E.2) ; lisez-la deux fois.
+   là-dessus ([annexe E.2](SPEC-PBC-v1.md#e2)) ; lisez-la deux fois.
 4. **Isolation** — un agent ne peut lire ni écrire hors de sa mémoire (indices `0..=255`) et des bornes autorisées.
    Aucun dépassement n'est un `panic`.
 5. **Absence de `panic`** — quelle que soit l'entrée, y compris une suite d'octets aléatoire, tronquée ou adversariale,
@@ -84,16 +84,24 @@ Ils sont la spécification. Vous devez les garantir et savoir les **démontrer**
 
 ## 🔍 2. Travail à réaliser
 
+Le sujet fixe un **point de départ** — le bytecode `PBC`, décrit octet par octet par la spécification — et un
+**objectif** — faire tourner ce bytecode : des agents exécutés par votre machine, en local puis à distance par le
+protocole de l'[annexe K](SPEC-PBC-v1.md#annexe-k), avec le même résultat, le même gaz et les mêmes rappels que chez
+tous les autres groupes. Entre les deux, il ne dit pas tout. Les **étapes intermédiaires indispensables** —
+représentations internes, outils de mise au point, harnais de test, agents d'essai, ordre dans lequel attaquer les
+composants — sont à **identifier, concevoir et réaliser** par vous. Les jalons du §4 donnent un ordre d'avancement, pas
+un plan de travail ; chacune de ces étapes est une décision, et a sa place dans votre journal.
+
 Le socle obligatoire attendu de chaque groupe s'articule autour de **deux composants fondamentaux** :
 
 1. **Le Format (`pbc`)** — chargeur robuste, décodage et validation du format binaire `.pbc` (magic `PBC1`, version `1`,
    table de constantes `i64`, code). Ingestion sécurisée : zéro `panic`, aucune allocation non bornée, détection
-   immédiate des binaires tronqués ou invalides (Annexe A.2). L'architecture interne, le découpage en modules, les
+   immédiate des binaires tronqués ou invalides ([annexe A.2](SPEC-PBC-v1.md#a2)). L'architecture interne, le découpage en modules, les
    types et les API de manipulation du bytecode restent votre entière responsabilité d'ingénierie.
 
 2. **L'Exécuteur distant (`exec`)** — moteur d'exécution PBC et service réseau implémentant le protocole d'exécution
-   distante défini dans l'**Annexe K**. Ce composant gère l'exécution du bytecode, la pile, la mémoire persistante,
-   le prélèvement rigoureux du gaz (Annexe B et D), et délègue au client distant les interactions avec l'extérieur
+   distante défini dans l'**[annexe K](SPEC-PBC-v1.md#annexe-k)**. Ce composant gère l'exécution du bytecode, la pile, la mémoire persistante,
+   le prélèvement rigoureux du gaz (annexes [B](SPEC-PBC-v1.md#annexe-b) et [D](SPEC-PBC-v1.md#annexe-d)), et délègue au client distant les interactions avec l'extérieur
    (`SENSE`, `ACT`, `RAND`) par un système de rappels bidirectionnels.
 
 ### Spécification CLI minimale
@@ -106,7 +114,7 @@ palestre exec --listen <adresse>
 ```
 
 Cette commande démarre le serveur d'exécution réseau sur l'adresse spécifiée (par exemple `127.0.0.1:9000`), prêt à
-traiter les trames du protocole défini dans l'Annexe K (`OPEN`, `SUBMIT`, `EXEC`, rappels `SENSE`/`ACT`/`RAND`).
+traiter les trames du protocole défini dans l'[annexe K](SPEC-PBC-v1.md#annexe-k) (`OPEN`, `SUBMIT`, `EXEC`, rappels `SENSE`/`ACT`/`RAND`).
 
 ### Niveau Minimal (MVP) pour 10/20
 
@@ -144,8 +152,8 @@ asm(disasm(p)) == p   // pour tout binaire valide p
 
 ### Ouvertures et extensions libres : l'Arène et les Matches
 
-La spécification normative formalise en Annexe E le déroulement exact d'un tour (`E.2`), le comportement des capteurs
-`SENSE` (`E.3`), des actions `ACT` (`E.4`) et les conditions d'arbitrage et de victoire (`E.5`).
+La spécification normative formalise en [annexe E](SPEC-PBC-v1.md#annexe-e) le déroulement exact d'un tour ([E.2](SPEC-PBC-v1.md#e2)), le comportement des capteurs
+`SENSE` ([E.3](SPEC-PBC-v1.md#e3)), des actions `ACT` ([E.4](SPEC-PBC-v1.md#e4)) et les conditions d'arbitrage et de victoire ([E.5](SPEC-PBC-v1.md#e5)).
 
 Vous êtes libres de concevoir votre propre moteur de simulation d'arène locale, permettant d'opposer deux programmes
 sur une grille avec ressources et murs. Vous pouvez également imaginer des visualiseurs (TUI ou graphiques), des tournois
@@ -163,8 +171,11 @@ ouvertures et bonus (§6).
 * **Pas d'`async`** : ni `async`/`await`, ni `tokio`, ni `futures`. Ce n'est pas une préférence de style : un runtime
   asynchrone introduit un ordonnancement non maîtrisé, source de non-déterminisme. La machine est **monotâche par construction** :
   une boucle, un compteur ordinal, aucune concurrence au cœur de l'exécution.
-* **Concurrence** : attendue pour le service réseau (Annexe K), et **`std` uniquement** — `thread::scope`, `mpsc`, `Mutex`.
-  Chaque connexion TCP traite ses requêtes de manière déterministe.
+* **Concurrence** : attendue pour le service réseau ([annexe K](SPEC-PBC-v1.md#annexe-k)), et **`std` uniquement** — `thread::scope`, `mpsc`, `Mutex`.
+  Une connexion ne porte qu'une exécution à la fois, sans pipelining ([K.4](SPEC-PBC-v1.md#k4)), et le résultat ne dépend que de ce
+  que le client a envoyé ([K.5](SPEC-PBC-v1.md#k5)). Rien n'oblige donc les connexions à partager quoi que ce soit, pas même un
+  compteur de sessions : un thread par connexion suffit, sans verrou — deux exécutions sur deux connexions ne se voient
+  pas. Si vous partagez quelque chose, un cache de programmes par exemple, c'est une décision : elle va au journal.
 * **Qualité exigée** :
   * Minimisation des `unwrap()`, `expect()` et `panic!()` (tolérés uniquement dans les tests unitaires). Dans le moteur
     d'exécution et le décodeur, ils sont **strictement interdits** : l'invariant 5 les exclut par construction.
@@ -192,7 +203,7 @@ ouvertures et bonus (§6).
 * **Tests de propriétés (recommandé)** : l'utilisation d'une bibliothèque comme `proptest` constitue une excellente pratique pour éprouver automatiquement les invariants fondamentaux :
   * Déterminisme absolu de l'exécution pour une mémoire et des entrées identiques.
   * Terminaison garantie et respect du budget de gaz sur bytecode arbitraire.
-  * Atomicité du tour en cas de faute (restauration d'état conforme à E.2).
+  * Atomicité du tour en cas de faute (restauration d'état conforme à [E.2](SPEC-PBC-v1.md#e2)).
   * Si vous implémentez un assembleur/désassembleur : l'aller-retour `asm(disasm(p)) == p`.
 * **Fuzzing (bonne pratique)** : fuzzer le chargeur binaire et le décodeur (`cargo-fuzz` / `arbitrary`) est une pratique vivement encouragée pour consolider l'invariant 5 (absence totale de `panic` sur des suites d'octets hostiles, aléatoires ou corrompues).
 
@@ -213,7 +224,7 @@ Les jalons ci-dessous constituent des repères de progression suggérés pour or
 |---------|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
 | **J1**  | Dépôt configuré, CI en place, chargeur PBC, validation du binaire et décodeur d'instructions         | Tests unitaires du chargeur et du décodeur validés             |
 | **J2**  | Moteur d'exécution complet : pile, arithmétique, gaz, sauts, appels, fautes typées                   | Tests des instructions, du budget de gaz et des 16 fautes      |
-| **J3**  | Exécuteur distant : serveur réseau TCP implémentant les trames de l'Annexe K                         | Sessions, exécutions et rappels `SENSE`/`ACT`/`RAND` conformes |
+| **J3**  | Exécuteur distant : serveur réseau TCP implémentant les trames de l'annexe K                         | Sessions, exécutions et rappels `SENSE`/`ACT`/`RAND` conformes |
 | **J4**  | **Journée d'interopérabilité (en salle)** : confrontation des clients et serveurs entre groupes      | Échanges croisés de bytecode et de serveurs `palestre exec`    |
 | **J5**  | Consolidation des tests, bonnes pratiques (propriétés, fuzzing), documentation d'architecture        | Suite de tests consolidée, documentation finalisée             |
 | **Gel** | Dernier commit pris en compte la veille de la soutenance                                             | `git log`                                                      |
@@ -221,7 +232,17 @@ Les jalons ci-dessous constituent des repères de progression suggérés pour or
 ### Le journal de décisions (ADR) 📓
 
 L'assistance par intelligence artificielle est **autorisée sans restriction**. En contrepartie, vous devez impérativement
-tenir un journal de décisions d'architecture (ADR) versionné dans votre dépôt :
+tenir un journal de décisions d'architecture (ADR) versionné dans votre dépôt.
+
+**Pourquoi c'est la pièce maîtresse du dépôt.** Un assistant écrit du code plus vite que vous ne le lisez ; il ne décide
+de rien à votre place. Le journal est l'endroit où une suggestion devient une décision : écrire le contexte, poser deux
+options côte à côte et dire ce qui vous ferait changer d'avis, c'est **comprendre avant de commiter**, et c'est souvent
+en l'écrivant qu'on découvre que la question était mal posée. Pour l'équipe, c'est la mémoire commune — à trois ou
+quatre, avec un assistant, personne ne sait seul pourquoi le code est ce qu'il est. Pour l'évaluation, c'est **la seule
+trace de votre raisonnement** : du code peut se générer, un raisonnement daté qui précède le code qu'il motive ne se
+reconstitue pas. Le jury le lit, y pioche en soutenance (§5), et y adosse les bonus. Un journal tenu sérieusement est
+le meilleur investissement du projet ; un journal de façade est ce qui se voit le plus vite.
+
 
 * **Un fichier par décision** : dans le répertoire `journal/`, nommé par exemple `journal/D-001-structure-vm.md`.
 * **En-tête** : identifiant, date, auteurs, statut (`proposée` / `adoptée` / `révisée` / `abandonnée`), commits concernés.
@@ -233,8 +254,11 @@ tenir un journal de décisions d'architecture (ADR) versionné dans votre dépô
   5. **Ce qui nous ferait changer d'avis** — le signal technique ou la métrique qui montrerait que le choix était sous-optimal.
 * **Règle d'antériorité** : les décisions doivent être commitées au fil de l'eau, avant ou en même temps que le code associé.
   Un journal rédigé rétrospectivement en bloc dans les derniers jours ne sera pas crédible.
-* **Attendu** : au moins **dix entrées**, dont **au moins trois** où la proposition de l'assistant a été adoptée initialement
-  sans compréhension immédiate totale. L'honnêteté intellectuelle et le recul critique sont directement notés.
+* **Attendu** : au moins **dix entrées**, réparties sur les composants et sur la durée du projet. La section 3 est tenue
+  honnêtement : quand vous retenez la proposition de l'assistant, dites ce que vous en avez vérifié et ce qui vous a
+  convaincus. Quand votre compréhension progresse — un test qui casse, une trame refusée, une discussion à J4 —
+  **révisez** l'entrée (statut `révisée`) plutôt que de la réécrire : une décision qui a évolué pour de bonnes raisons
+  vaut mieux qu'une décision qui n'a jamais été questionnée.
 * **Condition impérative pour les bonus (palier 16–20)** : Tout bonus ou ouverture revendiqué lors de l'évaluation doit
   obligatoirement faire l'objet d'un fichier ADR dédié dans `journal/D-xxx.md`. Cette entrée doit spécifier précisément le
   besoin, les options de conception étudiées, ce que l'assistant IA a proposé, les arbitrages retenus et les tests
@@ -256,8 +280,8 @@ Le projet est évalué selon cinq dimensions complémentaires :
    * Utilisation judicieuse des traits et de la généricité en Rust.
 
 2. **Conformité et Déterminisme** :
-   * Validation stricte du format binaire PBC et respect scrupuleux de la spécification `SPEC-PBC-v1.md` (jeu d'instructions B.3, cycle de gaz B.2, liste fermée des 16 fautes B.5).
-   * Interopérabilité réseau : conformité complète au protocole de l'Annexe K via la commande `palestre exec --listen <adresse>`.
+   * Validation stricte du format binaire PBC et respect scrupuleux de la spécification `SPEC-PBC-v1.md` (jeu d'instructions [B.3](SPEC-PBC-v1.md#b3), cycle de gaz [B.2](SPEC-PBC-v1.md#b2), liste fermée des 16 fautes [B.5](SPEC-PBC-v1.md#b5)).
+   * Interopérabilité réseau : conformité complète au protocole de l'[annexe K](SPEC-PBC-v1.md#annexe-k) via la commande `palestre exec --listen <adresse>`.
    * Matrice croisée lors de la soutenance : test de vos programmes sur les exécuteurs des autres groupes et de la référence.
    * Respect absolu des six invariants fondamentaux.
 
@@ -277,12 +301,12 @@ Le projet est évalué selon cinq dimensions complémentaires :
    * Réactivité et lucidité lors des épreuves de modification en direct au clavier (MOB programming).
    * Capacité individuelle à expliquer, justifier et modifier n'importe quelle portion du projet.
 
-### Barème officiel (Règlement ESGI)
+### Barème
 
-L'évaluation s'articule autour des cinq paliers réglementaires de l'établissement :
+L'évaluation s'articule autour des cinq paliers :
 
 * **16 à 20** : **Objectifs dépassés** — Qualité de conception exceptionnelle, robustesse sans faille démontrée par fuzzing, et bonus ambitieux pleinement opérationnels, préalablement spécifiés et minutieusement documentés dans le journal d'architecture (ADR).
-* **13 à 15** : **Ensemble des objectifs atteints** — Implémentation complète et rigoureusement conforme aux spécifications (chargeur, machine, exécuteur réseau Annexe K), couverture de tests solide, journal d'architecture complet et soutenance fluide démontrant une excellente maîtrise technique.
+* **13 à 15** : **Ensemble des objectifs atteints** — Implémentation complète et rigoureusement conforme aux spécifications (chargeur, machine, exécuteur réseau [annexe K](SPEC-PBC-v1.md#annexe-k)), couverture de tests solide, journal d'architecture complet et soutenance fluide démontrant une excellente maîtrise technique.
 * **10 à 12** : **Objectifs globalement atteints avec des écarts mineurs** — Niveau minimal (MVP) atteint : chargeur PBC sans crash, exécution fonctionnelle d'un match entre agents simples et couverture raisonnable du jeu d'instructions par des tests automatisés.
 * **5 à 9** : **Écarts majeurs par rapport aux objectifs** — Niveau minimal incomplet ou instable, gestion des erreurs défaillante, couverture de tests lacunaire, journal ADR superficiel ou difficultés significatives lors des épreuves pratiques en soutenance.
 * **0 à 4** : **Écarts critiques par rapport aux objectifs** — Non-compilation du projet, présence d'`unsafe`, d'`async` ou de `panic!`, violations répétées des invariants fondamentaux, ou projet produit par IA sans compréhension prouvée.
@@ -308,11 +332,11 @@ L'intelligence artificielle est un assistant de productivité, non un auteur de 
 
 ### Les épreuves pratiques : Le chapeau 🎩
 
-La soutenance s'articule autour de deux chapeaux et d'épreuves concrètes au clavier :
+La soutenance s'articule autour de deux *chapeaux* et d'épreuves concrètes au clavier :
 
 * **Le jury pioche dans votre journal (ADR)** : Une décision d'architecture est tirée au sort. Vous devez la résumer sans notes, montrer le code qui l'implémente, expliquer l'alternative écartée (voire en implémenter le début), et justifier l'antériorité de la décision dans `git log`.
 * **Vous piochez dans un chapeau de questions de code** : Questions techniques transversales, communes à toutes les implémentations et conçues sur la base de la spécification :
-    * **Navigation individuelle (sans clavier, sans réseau)** : localiser instantanément où est appliqué un invariant, expliquer la transition d'un opcode, justifier un type d'erreur ou la durée de vie d'une référence (`&mut`). **L'incapacité à naviguer dans son propre code est éliminatoire.**
+    * **Navigation (sans assistance IA)** : localiser où est appliqué un invariant, expliquer la transition d'un opcode, justifier un type d'erreur ou la durée de vie d'une référence (`&mut`). **L'incapacité à naviguer dans son propre code est éliminatoire.**
     * **Conformité & cas limites** : diagnostiquer et faire passer un cas de test inédit ou une trame malformée.
     * **Spécification v2** : ajout d'une instruction ou modification d'une règle de gaz ; analyse des tests impactés.
     * **Interopérabilité** : identification d'un cas de divergence face à un bytecode ou un serveur tiers.
@@ -322,8 +346,7 @@ La soutenance s'articule autour de deux chapeaux et d'épreuves concrètes au cl
 
 L'épreuve collective de modification s'effectue en direct sous format **MOB programming** :
 * **Un seul clavier pour l'équipe**, pendant que les autres membres guident et conçoivent la solution.
-* **Le clavier tourne au hasard toutes les trois minutes**, imposant une compréhension collective et continue du code.
-* À la fin du temps imparti, la suite de tests (`cargo test`) doit être au vert.
+* À la fin du temps imparti, la suite de tests (`cargo test`) doit être au vert (ou bien avancer dans la bonne direction, sur appréciation du jury).
 * L'évaluation porte autant sur la méthode que sur le résultat : temps de localisation, pertinence du guidage collectif et surtout **réaction lucide face aux erreurs du compilateur Rust** (comprendre un message du borrow checker plutôt que tenter des `clone()` au hasard).
 
 ### La journée d'interopérabilité (Jalon J4)
@@ -336,7 +359,7 @@ c'est une occasion privilégiée de détecter les divergences de consensus et d'
 
 ## 🎁 6. Pistes de Bonus
 
-Pour dépasser les objectifs (palier 16 à 20 du Règlement ESGI) :
+Pour dépasser les objectifs (palier 16 à 20 du barème) :
 
 > **Règle impérative d'éligibilité des bonus** :  
 > Aucun bonus ne sera valorisé au titre du palier 16–20 s'il n'est pas **précisément spécifié, implémenté avec rigueur et intégralement documenté dans un fichier ADR dédié (`journal/D-xxx.md`)**.  
@@ -344,7 +367,7 @@ Pour dépasser les objectifs (palier 16 à 20 du Règlement ESGI) :
 
 * **Assembleur et désassembleur textuels** : outillage de développement complet (compilation d'une syntaxe textuelle libre vers `.pbc`,
   désassemblage lisible, test de propriété `asm(disasm(p)) == p`).
-* **Arène complète et simulation de tournois** : implémentation intégrale de l'Annexe E (monde, grille, tours, arbitrage),
+* **Arène complète et simulation de tournois** : implémentation intégrale de l'[annexe E](SPEC-PBC-v1.md#annexe-e) (monde, grille, tours, arbitrage),
   permettant de simuler des matches multi-agents et d'organiser des compétitions de stratégie en local.
 * **Vérificateur statique de bytecode** : analyse statique préalable du bytecode garantissant *avant toute exécution*
   qu'aucun saut n'atterrit hors des limites ou sur une cible invalide, et bornant la hauteur maximale de pile (analogue aux vérificateurs WASM/EVM).
