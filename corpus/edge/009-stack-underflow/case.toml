@@ -1,0 +1,5 @@
+description = "DROP on an empty stack"
+category = "stack"
+clause = "B.1"
+
+[[exec]]

@@ -1,0 +1,5 @@
+description = "i64::MIN / -1 and i64::MIN % -1"
+category = "arith"
+clause = "0"
+
+[[exec]]

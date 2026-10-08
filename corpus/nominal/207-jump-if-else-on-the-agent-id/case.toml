@@ -1,0 +1,9 @@
+description = "one program, two branches, chosen by the answer to SENSE ID"
+category = "jump"
+clause = "B.4"
+
+[[exec]]
+answers = [{ sense = 0 }]
+
+[[exec]]
+answers = [{ sense = 1 }]

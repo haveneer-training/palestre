@@ -1,0 +1,5 @@
+description = "CONST into an empty constant table"
+category = "degenerate"
+clause = "B.3"
+
+[[exec]]

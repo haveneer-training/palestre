@@ -1,0 +1,5 @@
+description = "the program counter walks off the end of the code"
+category = "decode"
+clause = "B.2"
+
+[[exec]]

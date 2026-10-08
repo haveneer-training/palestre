@@ -1,0 +1,6 @@
+description = "ACT pushes its own outcome onto the stack"
+category = "act"
+clause = "B.3, E.4"
+
+[[exec]]
+answers = [{ act = true }]

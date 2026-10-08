@@ -6,7 +6,7 @@ Ce document est le contrat commun à tous les groupes. Toute implémentation con
 donnée, exactement le même résultat d'exécution, le même gaz consommé, les mêmes fautes, la même mémoire finale et les
 mêmes séquences de rappels réseau que toute autre implémentation conforme.
 
-En cas de contradiction entre ce document et le sujet (`SUJET.md`), **ce document fait foi**.
+En cas de contradiction entre ce document et le sujet (`README.md`), **ce document fait foi**.
 
 Les mots **DOIT**, **NE DOIT PAS**, **DEVRAIT** et **PEUT** ont le sens habituel des documents normatifs.
 
@@ -156,7 +156,7 @@ octets, son gaz et son effet sur la pile le sont.
 | `0x52` | `CALLX`     | —        | 7   | `t --`           | empile l'adresse de retour, puis saut à la cible **absolue** dépilée                                   |
 | `0x60` | `SENSE k`   | `u8`     | 8   | `-- v`           | capteur `k` (annexe E) ; inconnu ⇒ `Fault::BadSensor`                                                  |
 | `0x61` | `ACT k`     | `u8`     | 12  | `arg -- ok`      | action `k` (annexe E) ; inconnue ⇒ `Fault::BadAction` ; deuxième `ACT` du tour ⇒ `Fault::AlreadyActed` |
-| `0x70` | `RAND`      | —        | 5   | `-- v`           | tire une valeur aléatoire `v` fournie par l'hôte/environnement (rappel réseau K.3)                     |
+| `0x70` | `RAND`      | —        | 5   | `-- v`           | tire une valeur aléatoire `v` fournie par l'hôte/environnement (rappel réseau K.6)                     |
 | `0x71` | `GAS`       | —        | 2   | `-- g`           | gaz restant du tour, **son propre coût déjà prélevé** (B.7)                                            |
 | `0xF0` | `TRACE`     | —        | 1   | `v --`           | ajoute `v` à la trace du tour ; aucun effet sur l'état                                                 |
 
@@ -213,8 +213,8 @@ restaurent le même état, mais ne consignent pas la même chaîne.
 
 `BadJump` couvre deux refus distincts — cible hors du code, et cible qui ne porte pas le marqueur `JUMPDEST` (B.4). En
 distinguer une dix-septième chaîne n'aurait rien ajouté d'observable : dans les deux cas, le tour s'arrête sans avoir
-sauté. Il couvre aussi la cible **dépilée** hors de `[0, code_len)` de `JMPX` et `CALLX` : c'est le même refus, pour la
-même raison observable.
+sauté. Il couvre aussi, la cible **dépilée** hors de `[0, code_len)` de `JMPX` et `CALLX` : c'est le
+même refus, pour la même raison observable.
 
 Les six instructions ajoutées par la `1.3.0` n'introduisent **aucune** chaîne : `BadConst` couvre l'index dépilé de
 `CONSTX`, `BadJump` les cibles absolues, `StackUnderflow` les arguments manquants, et `SAR` ne faute jamais. La liste
@@ -225,8 +225,7 @@ Les deux instructions ajoutées par la `1.9.0`, `LOAD k` et `STORE k`, n'en intr
 `StackOverflow`/`StackUnderflow` couvrent les seuls refus qui leur restent.
 
 `BadHeader` fait exception : c'est une **erreur de chargement**, levée avant que l'exécution ne commence. Elle
-n'apparaît
-jamais dans les fautes d'un tour en cours — un programme qui ne charge pas n'est pas exécuté (K.3, K.8).
+n'apparaît jamais dans les fautes d'un tour en cours — un programme qui ne charge pas n'est pas exécuté (K.3, K.8).
 
 ### <a id="b6"></a>B.6 Opérations binaires et décalages
 
@@ -249,9 +248,9 @@ SHR : v = ((a as u64) >> n) as i64      pour 0 <= n <= 63,  sinon 0
 SAR : v = a >> n                        pour 0 <= n <= 63,  sinon 0 si a >= 0, -1 si a < 0
 ```
 
-`SHL` et `SHR` opèrent des décalages logiques sur les 64 bits de la valeur réinterprétée en `u64`. `SAR` est l'opération
-sur le **nombre signé** et non sur le motif de bits ; les deux cohabitent explicitement plutôt que l'une ne remplace
-l'autre, et c'est pour cela que ce sont trois opcodes et non deux.
+`SHL` et `SHR` opèrent des décalages logiques sur les 64 bits de la valeur réinterprétée en `u64`. `SAR` est
+l'opération sur le **nombre signé** et non sur le motif de bits ; les deux cohabitent explicitement plutôt que l'une ne
+remplace l'autre, et c'est pour cela que ce sont trois opcodes et non deux.
 
 **La règle de débordement de `SAR` est délibérément la seconde du document.** `SAR(-1, 63)` vaut `-1` ; `SAR(-1, 64)`
 valant `0` contredirait le sens de l'opération à la frontière exacte où il ne lui reste plus que le signe à propager.
@@ -295,9 +294,8 @@ de la `1.9.0`, coûtent un de moins que `STOREX`/`LOADX` : le `PUSHI16` qui disp
 pour l'accès qui n'a plus rien à dépiler.
 
 Budget par tour : `gas_budget`, au minimum `1` et au maximum `65535` puisqu'il est un `u16`. La valeur usuelle est
-`1000`.
-Le gaz non consommé n'est pas reporté d'un tour sur l'autre. `HALT` coûte `0`, donc un programme peut toujours s'arrêter
-proprement.
+`1000`. Le gaz non consommé n'est pas reporté d'un tour sur l'autre. `HALT` coûte `0`, donc un programme peut toujours
+s'arrêter proprement.
 
 ---
 
@@ -337,11 +335,12 @@ vivant :
 | autre | `Fault::BadSensor`                                                          |
 
 Le « tour en cours » de `SENSE 5` est le tour `t` en train de s'exécuter.
-La distance de `SENSE 7` est une distance de Manhattan **à vol d'oiseau** : `|x1 - x2| + |y1 - y2|`, ignorant les murs.
+
+La distance de `SENSE 7` est une distance de Manhattan **à vol d'oiseau**: `|x1 - x2| + |y1 - y2|`, ignorant les murs.
 
 #### `SENSE 8` — le masque de voisinage
 
-`SENSE 8` rend un entier de `0` à `15`, un bit par direction, dans l'ordre des directions de `MOVE` (E.4) :
+`SENSE 8` rend un entier de `0` à `15`, un bit par direction, **dans l'ordre des directions de `MOVE`** (E.4) :
 
 | Bit | Valeur | Direction     | Vaut `1` si                                            |
 |-----|--------|---------------|--------------------------------------------------------|
@@ -350,11 +349,28 @@ La distance de `SENSE 7` est une distance de Manhattan **à vol d'oiseau** : `|x
 | `2` | `4`    | sud  (`y+1`)  | idem                                                   |
 | `3` | `8`    | ouest (`x-1`) | idem                                                   |
 
-Le bord de la grille compte comme un mur. Le masque se lit avec les opérations binaires de B.6.
+Le bord de la grille compte donc comme un mur. Le masque se lit avec les opérations binaires de B.6.
+Un agent au coin nord-ouest d'un plateau sans le moindre mur lit `9`, soit `0b1001`.
+
+Ce que le masque **ne dit pas** : la présence de l'autre agent. `MOVE` échoue aussi sur une case occupée par un agent
+vivant (E.4), et cette cause-là est mobile ; le masque ne décrit que le plateau, qui ne bouge pas. Un bit à `0` promet
+donc qu'il n'y a ni bord ni mur, jamais que le déplacement réussira — `SENSE 13` couvre la donnée mobile qui manque
+ici (si `(SENSE 8 | SENSE 13) & (1 << dir) == 0`, le déplacement vers `dir` réussira).
+
+
+
+Sur un plateau sans mur, `SENSE 8` reste utile et défini : il rend le voisinage de bord. Il n'y a pas de version du
+capteur qui n'existerait qu'en présence de murs.
+
+Le masque se lit avec les opérations binaires de B.6 : `SENSE 8`, `PUSHI16 2`, `AND` teste l'est pour onze unités de
+gaz,
+et chaque direction suivante en coûte quatre — `DUP`, `PUSHI16`, `AND` — tant que le masque est conservé sous la pile.
+Sans `AND`, il faudrait un `DIV` et un `MOD` par direction, soit quatorze unités : c'est la raison d'être de B.6.
 
 #### `SENSE 9` — le masque des ressources
 
-`SENSE 9` rend un entier de `0` à `15`, sur la même forme :
+`SENSE 9` rend un entier de `0` à `15`, sur **exactement la même forme** que `SENSE 8` : un bit par direction, dans
+l'ordre des directions de `MOVE`, bit `0` nord, `1` est, `2` sud, `3` ouest.
 
 | Bit | Valeur | Direction     | Vaut `1` si                                                    |
 |-----|--------|---------------|----------------------------------------------------------------|
@@ -363,18 +379,36 @@ Le bord de la grille compte comme un mur. Le masque se lit avec les opérations 
 | `2` | `4`    | sud  (`y+1`)  | idem                                                           |
 | `3` | `8`    | ouest (`x-1`) | idem                                                           |
 
-C'est un masque de **présence**, jamais de quantité. Un voisin hors de la grille ou muré porte `0`.
+C'est un masque de **présence**, jamais de quantité : il dit *s'il y a*, pas *combien il y a*. Un agent qui choisit où
+aller n'a besoin que de la présence — la quantité, il la lira avec `SENSE 4` une fois arrivé, et `TAKE` plafonne de
+toute façon à cinq (E.4). Quatre capteurs directionnels rendant la quantité auraient coûté trente-deux unités de gaz
+là où le masque en coûte huit.
+
+Un voisin **hors de la grille** porte `0`. Un voisin **muré** porte `0` lui aussi, et sans que la question se pose : une
+case murée ne peut pas porter de ressource. Ce masque n'a donc, contrairement à `SENSE 8`, aucune raison de
+confondre le bord et le mur — les deux disent `0` pour le même motif, il n'y a rien là.
+
+Ce que le masque **ne dit pas** : la présence de l'autre agent. Comme pour `SENSE 8`, un bit à `1` promet une
+ressource, jamais que `MOVE` réussira — la case peut être occupée par un agent vivant (E.4). Le plateau ne bouge pas,
+l'adversaire si ; `SENSE 13` le dit.
 
 #### Les constantes du monde — `SENSE 10`, `11` et `12`
 
-`SENSE 10` et `SENSE 11` rendent les **index maximaux** de la grille, `x_max` et `y_max` (une grille de 4 colonnes rend
-`3`).
-`SENSE 12` rend `turns_max`, le nombre total de tours prévu pour la partie. Ces trois valeurs sont constantes pour toute
-la partie.
+`SENSE 10` et `SENSE 11` rendent les **index maximaux** de la grille, `x_max` et `y_max`, jamais une largeur ni une
+hauteur : une grille de quatre colonnes rend `3`.
+
+`SENSE 12` rend `turns_max`, le nombre total de tours prévu pour la partie — le dernier tour que la partie
+peut jouer, non le nombre de tours restants. À ne pas confondre avec `SENSE 5`, qui rend le tour **en cours** : les
+deux noms se ressemblent et les deux valeurs ne se remplacent pas. Le nombre de tours restants s'écrit
+`SENSE 12`, `SENSE 5`, `SUB`.
+
+Ces trois valeurs sont **constantes pour toute la partie**. Un programme les lit une fois et les range en mémoire ;
+c'est pour cela qu'elles sont trois capteurs et non un mot empaqueté à décoder à chaque usage.
 
 #### `SENSE 13` — le masque des agents
 
-`SENSE 13` rend un entier de `0` à `15`, sur la même forme :
+`SENSE 13` rend un entier de `0` à `15`, sur **exactement la même forme** que `SENSE 8` et `SENSE 9` : un bit par
+direction, dans l'ordre des directions de `MOVE`, bit `0` nord, `1` est, `2` sud, `3` ouest.
 
 | Bit | Valeur | Direction     | Vaut `1` si                                         |
 |-----|--------|---------------|-----------------------------------------------------|
@@ -383,9 +417,14 @@ la partie.
 | `2` | `4`    | sud  (`y+1`)  | idem                                                |
 | `3` | `8`    | ouest (`x-1`) | idem                                                |
 
-Un agent mort ne compte pas (bit à `0`). Combiné à `SENSE 8`, il permet de prédire avec certitude le succès d'un
-déplacement :
-si `(SENSE 8 | SENSE 13) & (1 << dir) == 0`, le déplacement vers `dir` réussira.
+C'est le complément que `SENSE 8` et `SENSE 9` annonçaient chacun ne pas donner : la présence de l'autre agent.
+`SENSE 8` dit le bord et le mur, statiques ; `SENSE 9` dit la ressource, statique elle aussi tant que personne ne la
+ramasse ; `SENSE 13` dit l'adversaire, seule donnée du triptyque qui **bouge** d'un tour à l'autre. Combiné à
+`SENSE 8`, il rend `MOVE` entièrement prévisible avant toute tentative : `SENSE 8 | SENSE 13`, lu bit à bit, promet
+qu'une direction à `0` réussira.
+
+Un agent **mort** ne compte pas : son bit reste à `0`, exactement comme s'il n'était pas là. C'est la même réserve
+que celle de `SENSE 7`.
 
 ### <a id="e4"></a>E.4 Actions — `ACT k`, argument dépilé, issue rendue
 
@@ -402,18 +441,32 @@ Une seule action réussie **ou échouée** par tour. Un second `ACT` lève `Faul
 Un **échec** d'action n'est pas une faute : le tour se poursuit normalement. Une **faute** interrompt le tour et
 déclenche l'annulation décrite en E.2.
 
-**`ACT k` empile son issue** : `arg -- ok`, `ok` valant `1` en cas de succès, `0` en cas d'échec. Toute autre valeur est
-**réservée**.
-`ACT` dépile son argument puis empile son issue : il ne peut pas produire `Fault::StackOverflow`.
+**`ACT k` empile son issue** : `arg -- ok`, `ok` valant `1` en cas de succès, `0` en cas d'échec. Toute autre valeur
+est **réservée** : elle ne peut être ni produite ni interprétée par ce document. `ACT` dépile son argument puis
+empile son issue, sans jamais empiler sans avoir dépilé — un `ACT` ne peut donc pas produire `Fault::StackOverflow`,
+quel que soit le remplissage de la pile avant l'instruction.
 
-`EAT` convertit des ressources portées en énergie avec un taux `eat_rate` (défaut : `10` points d'énergie par
-ressource).
-Comme pour `DROP`, l'argument est borné par `carried` et un argument négatif provoque un échec.
+Les trois causes d'échec de `MOVE` — bord, mur, agent vivant — se **prédisent** avant toute tentative :
+`SENSE 8` dit le bord et le mur, `SENSE 13` dit l'agent, et la combinaison `SENSE 8 | SENSE 13` promet qu'une
+direction dont le bit vaut `0` réussira — la prédiction ne peut pas périmer, puisque E.2 traite les agents en
+séquence et que rien d'autre que l'agent courant ne bouge pendant son propre tour. `SENSE 7`, qui ne donne qu'une
+distance, jamais une direction, ne prédit rien de tout cela. Un mur n'a pas d'effet sur `TAKE`, `DROP` ni `EAT` : un
+agent n'est jamais sur une case murée, donc la question ne se pose pas.
 
-### <a id="e5"></a>E.5 Fin de partie & Conditions de victoire
+`ACT k` avec un `k` hors de `0..=3` lève `Fault::BadAction` et ne produit **aucune** action. Une direction invalide
+de `MOVE`, en revanche, est un échec d'action ordinaire (`ok` vaut `0`).
 
-La partie s'arrête au tour `turns_max` (`500` usuel), ou dès qu'il ne reste au plus qu'un agent vivant.
-Le test a lieu après le passage de tous les agents du tour : un tour commencé est toujours joué en entier.
+`EAT` est la seule source d'énergie de la partie, et la seule opération qui retire définitivement de la ressource du
+plateau. Le taux est **`eat_rate`** : `eat_rate` points d'énergie par charge convertie, `10` par défaut. Comme le
+vainqueur se départage d'abord sur `carried`, convertir reste un **achat de survie payé en score** quel que soit le
+taux : c'est le seul arbitrage économique du jeu, et `eat_rate` en règle le prix. Le clampage
+`min(arg, carried)` et l'échec sur `arg < 0` sont exactement ceux de `DROP`, et ne dépendent pas du taux — le taux
+multiplie l'énergie gagnée, jamais la ressource consommée.
+
+### <a id="e5"></a>E.5 Fin de partie
+
+La partie s'arrête au tour `turns_max` (`500` par défaut), ou dès qu'il ne reste au plus qu'un agent vivant. Le test a
+lieu **après** le passage de tous les agents du tour : un tour commencé est toujours joué en entier.
 
 Règles de départage déterministes :
 
@@ -439,7 +492,20 @@ annexe K).
 | `CORRECTIF` | une correction éditoriale sans effet observable : formulation, exemple, coquille                       |
 
 **Règle de comparabilité.** Deux artefacts ne se comparent que si leurs `MAJEUR` et `MINEUR` sont égaux ; le
-`CORRECTIF` est ignoré.
+`CORRECTIF` est ignoré — c'est ce qui permet de corriger une phrase sans périmer un corpus. Comparer deux artefacts de
+versions mineures différentes n'est pas un échec de conformité, c'est une comparaison dépourvue de sens : un outil
+**DOIT** la refuser et nommer les deux versions, plutôt qu'énumérer des divergences de champs.
+
+Le coût est assumé : tout changement observable de ce document périme les `expected.json` produits avant lui. C'est
+précisément le but. Sans numéro dans les sorties, rien ne distingue un corpus régénéré d'un corpus ancien, et deux
+implémentations correctes contre deux versions différentes se ressemblent trait pour trait.
+
+### <a id="h2"></a>H.2 La version 2
+
+La version distribuée est gelée : une fois le sujet remis, elle ne bouge plus. Une version `2.0.0` **existe** et sera
+révélée en soutenance : elle modifie ou ajoute un petit nombre d'éléments de ce document. Concevez pour que ces
+changements soient localisés — à commencer par le numéro lui-même, qui ne devrait exister qu'à **un seul endroit** de
+votre code.
 
 ---
 
@@ -461,16 +527,15 @@ Aucun port par défaut n'est imposé.
 ### <a id="k1"></a>K.1 Modèle : la machine sans le monde
 
 Le serveur **exécute lui-même** le programme déposé, dans sa propre machine, mais il ne détient **aucun monde** : ni
-grille,
-ni ressources, ni second agent. Ce que `SENSE`, `ACT` et `RAND` demanderaient à un monde, le serveur le demande au
-**client**,
-par un aller-retour de rappel : le client agit comme un environnement d'exécution distant.
+grille, ni ressources, ni second agent. Ce que `SENSE`, `ACT` et `RAND` demanderaient à un monde, le serveur le demande
+au **client**, par un aller-retour de rappel : le client agit comme un environnement d'exécution distant.
 
-Le serveur applique purement les règles de B.1–B.7 à un programme, une mémoire initiale et un budget de gaz fournis par
-le
-client, et délègue au client chaque interaction avec l'environnement extérieur.
+C'est la fonction pure `(bytecode, mémoire initiale, budget) → (mémoire finale, gaz consommé, faute)`, augmentée des
+trois rappels qui la rendent capable d'exécuter un programme qui *sent* et *agit*, sans lui fournir de monde à sentir
+ni d'action à accomplir : c'est le client qui répond, avec ce qu'il veut.
 
-Conséquence directe : **aucun choix n'est fait côté serveur.** Ni carte, ni aléa serveur — `RAND` est délégué au client.
+Conséquence directe : **aucun choix n'est fait côté serveur.** Ni carte, ni aléa serveur — `RAND` est délégué au
+client. Le serveur ne fait qu'appliquer B.1–B.7 à un programme, une mémoire et un budget qu'il n'a pas choisis.
 
 ### <a id="k2"></a>K.2 Cadrage
 
@@ -478,13 +543,13 @@ Toute trame, dans les deux sens, respecte la structure binaire suivante :
 
 | Décalage | Taille | Champ     | Contrainte                                               |
 |----------|--------|-----------|----------------------------------------------------------|
-| `0`      | 1      | `type`    | `0x11..=0x1D`, voir table K.3                            |
+| `0`      | 1      | `type`    | `0x11..=0x1D`, voir table K.3                                  |
 | `1`      | 4      | `len`     | `u32` **gros-boutiste**, borne selon le sens, ci-dessous |
-| `5`      | `len`  | `payload` | Charge utile JSON ou binaire                             |
+| `5`      | `len`  | `payload` | charge utile : JSON, ou octets bruts pour `SUBMIT`       |
 
 Bornes normatives de taille :
 
-| Sens             | Borne de `len` | Justification                                                                                               |
+| Sens             | Borne de `len` | D'où elle vient                                                                                             |
 |------------------|----------------|-------------------------------------------------------------------------------------------------------------|
 | client → serveur | `98307`        | taille maximale d'un `.pbc` selon A.1 : `8 + 8 × 4095 + 4 + 65535`. `SUBMIT` est la seule trame volumineuse |
 | serveur → client | `4194304`      | un `RESULT` porte au plus `256 + 65535` entiers `i64` écrits en JSON (mémoire dense de B.1 plus la trace)   |
@@ -510,32 +575,30 @@ Un `type` hors de `0x11..=0x1D` **DOIT** être rejeté et provoquer une erreur `
 | `0x1C` | `RESULT`  | serveur → client | JSON — mémoire finale, gaz, faute, action, trace |
 | `0x1D` | `ERROR`   | serveur → client | JSON — code et message                           |
 
-`SUBMIT` transporte les octets bruts du fichier bytecode `.pbc`, sans encodage intermédiaire.
+`SUBMIT` transporte les octets bruts du fichier `.pbc`, sans encodage intermédiaire.
 
-Schémas JSON des messages :
+Chaque réplique porte le **passé** du verbe de sa requête — `SUBMIT` reçoit `SESSION`, `EXEC` reçoit finalement
+`RESULT`, `SENSE`/`ACT`/`RAND` reçoivent `SENSED`/`ACTED`/`DREW` : une réplique de mauvais genre se détecte à l'octet
+de type, avant même d'inspecter son JSON.
 
 ```json
 OPEN     {
   "proto": 1,
   "client": "reference-cli"
-}          // "client" est un nom d'affichage optionnel
-
+}          // "client" est un nom d'affichage optionnel, sans effet sur les règles
 READY    {
   "proto": 1,
   "spec": "PBC1",
   "spec_version": "1.9.0",
   "sessions_max": 16
 }
-
 SUBMIT   <octets bruts du .pbc>
-
 SESSION  {
   "session": "1",
   "pbc_sha256": "…",
   "code_len": 42
-}          // "session" est une chaîne opaque : voir K.4. "pbc_sha256" et "code_len" attestent
-// du chargement conforme du binaire
-
+}          // "session" est une chaîne opaque : voir K.4. "pbc_sha256" et "code_len" sont un
+// checksum de conformité, jamais l'identifiant lui-même
 EXEC     {
   "session": "1",
   "mem": [
@@ -546,30 +609,23 @@ EXEC     {
   ],
   "budget": 1000
 }
-
 SENSE    {
   "k": 7
 }
-
 SENSED   {
   "value": -1
-}          // ou {"fault": "BadSensor"} si le capteur est invalide pour le client
-
+}          // ou {"fault": "BadSensor"} si le capteur n'existe pas pour le client
 ACT      {
   "kind": "MOVE",
   "arg": 0
 }
-
 ACTED    {
   "ok": true
 }
-
 RAND     {}
-
 DREW     {
   "value": 42
 }
-
 RESULT   {
   "mem": [
     0,
@@ -589,35 +645,46 @@ RESULT   {
     7
   ]
 }
-
 ERROR    {
   "code": "bad_frame",
   "message": "session hors du jeu de caractères autorisé"
 }
 ```
 
-`fault` prend l'une des chaînes exactes de B.5, ou `null`.
-`SENSED` porte `value` **ou** `fault`, jamais les deux : un `SENSED` qui nomme une faute de chargement (`BadHeader`)
-est refusé comme `bad_frame`.
-`RESULT.act` prend la forme `{kind, arg, ok}` où `kind` est `"MOVE"`, `"TAKE"`, `"DROP"` ou `"EAT"`.
+`fault` prend l'une des chaînes exactes de B.5, ou `null`. `SENSED` porte `value` **ou** `fault`, jamais les deux :
+un `SENSED` qui nomme une faute de **chargement** (telle `BadHeader`) est refusé comme `bad_frame`, puisqu'un programme
+déjà chargé ne peut plus lever ce genre de faute. `RESULT.act` prend la forme `{kind, arg, ok}`, où `kind` est `"MOVE"`,
+`"TAKE"`, `"DROP"` ou `"EAT"`, et vaut `null` si aucune action n'a été tentée : un `ACT` qui lève `BadAction` n'en
+consigne aucune.
 
-**`proto` et `spec_version` sont deux choses distinctes** : `proto` versionne le transport (K.2), `spec_version`
-versionne les règles d'exécution. Le serveur ne doit pas refuser une connexion sur le seul motif d'une `spec_version`
-différente : il annonce sa version dans `READY`.
+**`proto` et `spec_version` restent deux choses distinctes** : `proto` versionne ce cadrage et cet
+alphabet, `spec_version` versionne les règles d'exécution (B, D, l'absence de monde ne changeant rien à B.1–B.7). Le
+serveur **NE DOIT PAS** refuser une connexion sur le seul motif d'une version de spécification différente — il
+**annonce** une seule version dans `READY`, jamais une liste.
 
 ### <a id="k4"></a>K.4 L'identifiant de session est opaque
 
 Sur le fil : `session: String`, de 1 à 64 caractères pris dans `[A-Za-z0-9_-]`, comparé **octet pour octet**. Un champ
 hors de ces bornes ou de ce jeu de caractères est un `bad_frame`.
 
-Conséquences normatives :
+Le type est une chaîne, et non un entier, précisément pour laisser le choix à l'implémentation : un serveur **PEUT**
+numéroter en décimal à partir de `1`, rendre l'empreinte du programme, un jeton opaque, ou toute autre valeur de son
+choix. Conséquences normatives :
 
-* Le client **NE DOIT PAS** interpréter un identifiant reçu (ni arithmétique, ni ordre). Il le renvoie **verbatim** dans
-  ses `EXEC`.
-* Deux `SUBMIT` du même programme peuvent rendre le même identifiant ou deux identifiants distincts.
-* Le client ne doit pas réutiliser un identifiant sur une autre connexion TCP.
+* un client **NE DOIT PAS** interpréter un identifiant reçu — ni arithmétique, ni ordre, ni densité supposée. Il le
+  renvoie **verbatim** dans ses `EXEC` ;
+* deux `SUBMIT` du **même** programme **PEUVENT** rendre le même identifiant (un serveur indexé par empreinte) ou deux
+  identifiants distincts (un serveur à compteur). Les deux sont conformes, et un client ne doit dépendre d'aucun des
+  deux ;
+* un client **NE DOIT PAS** réutiliser un identifiant sur une autre connexion ; un serveur, lui, n'est **pas** tenu de
+  le refuser — c'est cette asymétrie qui laisse conforme un serveur sans état, indexé par empreinte.
 
-Machine d'états par connexion TCP :
+`SESSION.pbc_sha256` n'est donc **pas** l'identifiant : c'est un **checksum de conformité** rendu au client, qui lui
+permet de vérifier que le serveur a chargé les octets qu'il croyait envoyer. `code_len` joue le même rôle pour la
+taille. Un serveur qui se sert de cette empreinte
+comme identifiant de session est un cas particulier légal, pas le modèle.
+
+Machine d'états, par connexion :
 
 ```
 Greeting  ── OPEN ──→  Idle  ⇄  Executing
@@ -627,62 +694,72 @@ Greeting  ── OPEN ──→  Idle  ⇄  Executing
 * `Greeting` n'accepte que `OPEN` (répond `READY`).
 * `Idle` accepte `SUBMIT` (répond `SESSION` ou `ERROR bad_program`) et `EXEC` (bascule en `Executing`).
 * `Executing` n'accepte que la réplique exacte du rappel en cours (`SENSED`, `ACTED` ou `DREW`) ; toute autre trame y
-  entraîne
-  `ERROR unexpected_message` puis la fermeture de la connexion.
+  entraîne `ERROR unexpected_message` puis la fermeture de la connexion.
 * Une session reste chargée au moins jusqu'à la fermeture de sa connexion. Un `EXEC` ne détruit pas la session : un
-  programme
-  peut être exécuté plusieurs fois.
-* Pas de pipelining : une seule exécution active par connexion.
+  programme peut être exécuté plusieurs fois.
+* Pas de pipelining : une seule exécution active par connexion; le parallélisme s'obtient par une seconde connexion.
 
 ### <a id="k5"></a>K.5 Le protocole est la fonction d'exécution, livrée par rappels
 
-`RESULT` est fonction pure de `(programme, mémoire initiale, budget, réponses aux rappels)` :
+`RESULT` est fonction de `(P, M₀, b, R₁ … R_k)` — le programme, la mémoire initiale, le budget, et les réponses aux
+rappels, dans l'ordre où ils sont posés — et de rien d'autre : pas d'horloge, pas d'état serveur, pas de PRNG serveur.
 
-* **Reproductibilité** : rejouer les mêmes trames rend le même `RESULT`, octet pour octet.
-* **Transcript normatif** : deux serveurs conformes émettent exactement la même suite de rappels `SENSE`/`ACT`/`RAND`
-  dans le même ordre.
+Conséquences :
+
+* **reproductibilité** : rejouer les mêmes trames rend le même `RESULT`, octet pour octet ;
+* **le transcript est normatif** : deux serveurs conformes, pour les mêmes `P`, `M₀`, `b` et les mêmes réponses aux
+  rappels, émettent la même suite de `SENSE`/`ACT`/`RAND`, dans le même ordre — pas seulement le même résultat final.
 
 ### <a id="k6"></a>K.6 Les rappels
 
-Un `SENSE` demande la valeur du capteur `k` (E.3), un `ACT` demande l'exécution de l'action `kind`/`arg` (E.4), un`RAND`
-demande un tirage au client. Le client répond respectivement `SENSED`, `ACTED`, `DREW` — strictement dans l'ordre où le
-serveur
-les pose.
+Un `SENSE` demande la valeur du capteur `k` (E.3), un `ACT` demande l'exécution de l'action `kind`/`arg` (E.4), un
+`RAND` demande un tirage au client. Le client répond respectivement `SENSED`, `ACTED`, `DREW` — jamais dans un autre
+ordre que celui dans lequel le serveur les pose, puisqu'une seule exécution est en vol par connexion (K.4).
 
-Un `RESULT` n'est émis que si les rappels nécessaires ont tous abouti ; si un rappel échoue ou si le client coupe la
-connexion,
-celle-ci est close sans émission de `RESULT`.
+> Un `RESULT` n'est émis que si les rappels nécessaires ont tous abouti ; une exécution dont un rappel échoue produit
+> une fermeture de connexion, pas un résultat.
 
 ### <a id="k7"></a>K.7 Déterminisme et bornes
 
-Le protocole ne comporte aucun choix non déterministe côté serveur. Tout l'aléa et les interactions proviennent du
-client via les rappels.
+Le protocole ne comporte **aucun** choix non déterministe côté serveur : rien ici ne dépend du réseau, le client
+fournit tout, y compris le hasard.
 
-`RAND` coûtant 5 unités de gaz (D.1), il y a au plus `budget / 5` rappels `RAND` par exécution (200 pour un budget usuel
-de 1000).
-`sessions_max` (annoncé dans `READY`) borne le nombre de sessions simultanées sur une connexion.
+`RAND` coûte 5 unités de gaz (D.1), donc au plus `budget / 5` allers-retours de ce type par exécution — 200 au budget
+usuel de `1000`. `sessions_max`, annoncé dans `READY`, borne l'accumulation de sessions ouvertes sur une connexion,
+comme la borne de trame de K.2 borne l'allocation d'une trame.
 
 ### <a id="k8"></a>K.8 Erreurs et robustesse
 
-| `code`               | Cause                                                                |
-|----------------------|----------------------------------------------------------------------|
-| `bad_frame`          | `len` hors bornes, `type` inconnu, JSON invalide, `session` invalide |
-| `bad_proto`          | version de protocole non gérée                                       |
-| `bad_program`        | les octets du `SUBMIT` ne passent pas le chargeur de A.1             |
-| `too_many_sessions`  | `sessions_max` déjà atteint                                          |
-| `no_such_session`    | l'`EXEC` nomme une session inconnue de cette connexion               |
-| `bad_memory`         | `mem` n'a pas exactement 256 valeurs                                 |
-| `bad_budget`         | `budget` nul ou hors bornes (`1..=65535`)                            |
-| `unexpected_message` | trame valide, mais interdite dans l'état courant (K.4)               |
+| `code`               | Cause                                                                 |
+|----------------------|-----------------------------------------------------------------------|
+| `bad_frame`          | `len` hors bornes, `type` inconnu, JSON invalide, `session` mal formé |
+| `bad_proto`          | version de protocole non gérée                                        |
+| `bad_program`        | les octets du `SUBMIT` ne passent pas le chargeur de A.1              |
+| `too_many_sessions`  | `sessions_max` déjà atteint                                           |
+| `no_such_session`    | l'`EXEC` nomme une session inconnue de cette connexion                |
+| `bad_memory`         | `mem` n'a pas exactement 256 valeurs                                  |
+| `bad_budget`         | `budget` nul ou hors bornes (`1..=65535`)                             |
+| `unexpected_message` | trame valide, mais interdite dans l'état courant (K.4)                |
 
-`too_many_sessions` et `no_such_session` **NE ferment PAS** la connexion : la connexion reste utilisable pour d'autres
-requêtes.
-Tout autre code de ce tableau entraîne l'envoi de `ERROR` puis la fermeture immédiate de la connexion.
+Il n'existe **délibérément pas** de code `bad_spec_version` : le serveur annonce une seule
+version, le client décide. Il n'existe pas non plus de code pour un rappel resté sans réponse : un client qui se tait
+est une connexion qui s'en va, pas une erreur applicative à nommer.
+
+`too_many_sessions` et `no_such_session` **NE ferment PAS** la connexion : ce sont des refus d'une demande précise,
+une session existante reste utilisable, une nouvelle tentative de `SUBMIT` ou d'`EXEC` reste possible. Tout autre code
+de ce tableau ferme la connexion après l'`ERROR`. Une trame tronquée par une coupure n'est pas une
+erreur applicative : la connexion est simplement close, sans `ERROR`.
 
 ### <a id="k9"></a>K.9 Hors périmètre en v1
 
-* **Aucune authentification, aucun chiffrement.**
-* **Aucune libération explicite de session** : la session vit au moins jusqu'à la fermeture de la connexion TCP.
-* **Aucun pipelining** : une seule exécution en cours par connexion TCP.
-* **Aucune persistance de mémoire côté serveur entre deux exécutions** : chaque `EXEC` fournit sa mémoire initiale de
-  256 `i64`.
+* **Aucune authentification, aucun chiffrement** — le serveur ne détient rien qui vaille d'être protégé : ni monde, ni
+  score, ni identité persistante.
+* **Aucune libération explicite de session.** Une session vit au moins jusqu'à la fermeture de sa connexion (K.4) ;
+  la question de sa survie au-delà relève de l'implémentation, pas du protocole.
+* **Aucun pipelining.** Une exécution en vol par connexion ; le parallélisme s'obtient par plusieurs connexions.
+* **Aucune observation pas à pas.** Le rappel expose le nécessaire (`SENSE`, `ACT`, `RAND`) ; il n'expose ni
+  l'instruction
+  courante ni la pile — `RESULT` ne transporte donc pas non plus la pile de fin, qui n'est pas un champ normatif.
+* **Aucune notion de monde, d'arène ou de second programme** : le serveur n'en connaît aucune.
+* **Aucune persistance de mémoire côté serveur au-delà d'une exécution.** Chaque `EXEC` fournit sa propre mémoire
+  initiale ; le serveur ne conserve pas la mémoire finale d'une exécution pour la suivante.

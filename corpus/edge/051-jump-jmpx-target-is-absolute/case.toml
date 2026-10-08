@@ -1,0 +1,5 @@
+description = "JMPX pops an absolute target, not a displacement"
+category = "jump"
+clause = "B.4"
+
+[[exec]]

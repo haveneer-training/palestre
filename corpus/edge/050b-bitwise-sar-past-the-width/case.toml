@@ -1,0 +1,5 @@
+description = "SHL and SHR keep their own rule past the width: 0, whatever the sign"
+category = "bitwise"
+clause = "B.6"
+
+[[exec]]

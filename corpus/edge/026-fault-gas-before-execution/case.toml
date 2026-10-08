@@ -1,0 +1,6 @@
+description = "a full stack with no gas left"
+category = "fault"
+clause = "B.2"
+
+[[exec]]
+budget = 64

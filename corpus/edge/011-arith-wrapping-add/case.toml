@@ -1,0 +1,5 @@
+description = "an addition that wraps around i64::MAX"
+category = "arith"
+clause = "0"
+
+[[exec]]

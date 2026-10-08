@@ -1,0 +1,12 @@
+description = "CALLX through a table of handlers, indexed by the answer to SENSE TURN"
+category = "call"
+clause = "B.3"
+
+[[exec]]
+answers = [{ sense = 1 }]
+
+[[exec]]
+answers = [{ sense = 2 }]
+
+[[exec]]
+answers = [{ sense = 3 }]

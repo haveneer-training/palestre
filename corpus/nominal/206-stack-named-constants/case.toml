@@ -1,0 +1,5 @@
+description = "constants out of the table, by fixed and by computed index"
+category = "stack"
+clause = "B.3"
+
+[[exec]]

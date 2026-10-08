@@ -1,0 +1,5 @@
+description = "a counted loop that ends on HALT"
+category = "jump"
+clause = "B.4"
+
+[[exec]]

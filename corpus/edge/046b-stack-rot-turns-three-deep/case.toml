@@ -1,0 +1,5 @@
+description = "ROT on two values underflows before anything moves"
+category = "stack"
+clause = "B.3"
+
+[[exec]]

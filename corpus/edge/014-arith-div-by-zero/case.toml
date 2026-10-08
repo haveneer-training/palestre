@@ -1,0 +1,5 @@
+description = "division by zero"
+category = "arith"
+clause = "B.3"
+
+[[exec]]

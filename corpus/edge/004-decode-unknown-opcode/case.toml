@@ -1,0 +1,5 @@
+description = "an opcode outside B.3"
+category = "decode"
+clause = "B.2"
+
+[[exec]]

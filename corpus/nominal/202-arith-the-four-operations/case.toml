@@ -1,0 +1,5 @@
+description = "ADD, SUB, MUL, DIV, MOD and NEG on small positive operands"
+category = "arith"
+clause = "B.3"
+
+[[exec]]

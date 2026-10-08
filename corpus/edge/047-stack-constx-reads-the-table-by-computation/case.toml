@@ -1,0 +1,6 @@
+description = "CONSTX pops its index, so a table can be read by calculation"
+category = "stack"
+clause = "B.3"
+
+[[exec]]
+answers = [{ sense = 0 }, { sense = 0 }]

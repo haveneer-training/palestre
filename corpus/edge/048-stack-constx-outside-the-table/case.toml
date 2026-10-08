@@ -1,0 +1,5 @@
+description = "a negative popped constant index is BadConst"
+category = "stack"
+clause = "B.3"
+
+[[exec]]

@@ -1,0 +1,5 @@
+description = "ROT is `a b c -- b c a`"
+category = "stack"
+clause = "B.3"
+
+[[exec]]

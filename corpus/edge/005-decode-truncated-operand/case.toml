@@ -1,0 +1,5 @@
+description = "an operand cut off by the end of the code"
+category = "decode"
+clause = "B.2"
+
+[[exec]]

@@ -1,0 +1,5 @@
+description = "PUSHI16, DUP, OVER, SWAP and ROT on a few small values"
+category = "stack"
+clause = "B.3"
+
+[[exec]]

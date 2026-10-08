@@ -1,0 +1,6 @@
+description = "GAS read against the non-monotone gas table"
+category = "gas"
+clause = "B.7"
+
+[[exec]]
+answers = [{ sense = 1 }]

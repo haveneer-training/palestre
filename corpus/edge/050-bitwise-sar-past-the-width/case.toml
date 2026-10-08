@@ -1,0 +1,5 @@
+description = "a SAR count outside 0..=63 fills with the sign, not zero"
+category = "bitwise"
+clause = "B.6"
+
+[[exec]]

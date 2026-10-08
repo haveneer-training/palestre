@@ -1,0 +1,5 @@
+description = "SHR is logical, and the count is popped first"
+category = "bitwise"
+clause = "B.6"
+
+[[exec]]

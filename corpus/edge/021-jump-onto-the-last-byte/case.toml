@@ -1,0 +1,5 @@
+description = "a jump onto the very last byte of the code"
+category = "jump"
+clause = "B.4"
+
+[[exec]]

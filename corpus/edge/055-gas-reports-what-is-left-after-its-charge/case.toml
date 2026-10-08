@@ -1,0 +1,5 @@
+description = "GAS is read after its own cost is taken (B.2 step 4 then 5)"
+category = "gas"
+clause = "B.7"
+
+[[exec]]

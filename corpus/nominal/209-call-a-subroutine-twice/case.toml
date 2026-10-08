@@ -1,0 +1,5 @@
+description = "a square subroutine, called twice and returning each time"
+category = "call"
+clause = "B.4"
+
+[[exec]]

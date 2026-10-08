@@ -1,0 +1,5 @@
+description = "a loop that stops itself before the budget does"
+category = "gas"
+clause = "B.7"
+
+[[exec]]

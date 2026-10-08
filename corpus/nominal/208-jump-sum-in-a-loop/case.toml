@@ -1,0 +1,5 @@
+description = "the sum of 1 to 5, in a counted loop"
+category = "jump"
+clause = "B.4"
+
+[[exec]]

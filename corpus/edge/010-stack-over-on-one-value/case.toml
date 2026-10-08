@@ -1,0 +1,5 @@
+description = "OVER with a single value on the stack"
+category = "stack"
+clause = "B.3"
+
+[[exec]]

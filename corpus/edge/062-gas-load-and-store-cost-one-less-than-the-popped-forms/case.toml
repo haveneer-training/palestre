@@ -1,0 +1,8 @@
+description = "LOAD k / STORE k cost one less than LOADX/STOREX, and k never goes out of bounds"
+category = "gas"
+clause = "B.3"
+
+[[exec]]
+
+[[exec]]
+mem = { 200 = 5 }

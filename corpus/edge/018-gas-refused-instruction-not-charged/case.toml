@@ -1,0 +1,7 @@
+description = "the gas of a refused instruction is not charged"
+category = "gas"
+clause = "B.2"
+
+[[exec]]
+budget = 10
+answers = [{ sense = 3 }]

@@ -1,0 +1,4 @@
+description = "one byte too many after the code"
+category = "header"
+clause = "A.1"
+load_error = "BadHeader"

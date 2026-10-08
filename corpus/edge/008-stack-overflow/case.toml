@@ -1,0 +1,5 @@
+description = "a 65th value on a 64-slot stack"
+category = "stack"
+clause = "B.1"
+
+[[exec]]

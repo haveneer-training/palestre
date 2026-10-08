@@ -1,0 +1,7 @@
+description = "an execution whose remaining gas is exactly zero"
+category = "gas"
+clause = "B.2"
+
+[[exec]]
+budget = 12
+answers = [{ sense = 0 }]

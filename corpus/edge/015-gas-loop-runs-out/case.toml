@@ -1,0 +1,6 @@
+description = "a loop stopped by the gas budget"
+category = "gas"
+clause = "B.2"
+
+[[exec]]
+budget = 14

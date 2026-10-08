@@ -1,0 +1,6 @@
+description = "a jump table: the index read by CONSTX, the target followed by JMPX"
+category = "jump"
+clause = "B.4"
+
+[[exec]]
+answers = [{ sense = 1 }]

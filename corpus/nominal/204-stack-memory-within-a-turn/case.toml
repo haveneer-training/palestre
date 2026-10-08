@@ -1,0 +1,8 @@
+description = "a named cell and a small array, written then read back"
+category = "stack"
+clause = "B.1"
+
+[[exec]]
+
+[[exec]]
+mem = { 0 = 42, 18 = 9 }

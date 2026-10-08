@@ -1,0 +1,5 @@
+description = "SAR is arithmetic where SHR is logical"
+category = "bitwise"
+clause = "B.6"
+
+[[exec]]

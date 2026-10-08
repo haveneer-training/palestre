@@ -1,0 +1,6 @@
+description = "a second action in the same turn"
+category = "act"
+clause = "E.4"
+
+[[exec]]
+answers = [{ act = true }]

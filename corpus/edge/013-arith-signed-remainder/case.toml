@@ -1,0 +1,5 @@
+description = "truncation toward zero and the sign of the remainder"
+category = "arith"
+clause = "0"
+
+[[exec]]

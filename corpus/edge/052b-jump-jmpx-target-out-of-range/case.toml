@@ -1,0 +1,5 @@
+description = "a popped target past the end of the code is the same BadJump"
+category = "jump"
+clause = "B.4"
+
+[[exec]]

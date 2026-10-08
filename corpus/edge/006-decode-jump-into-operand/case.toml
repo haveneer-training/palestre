@@ -1,0 +1,5 @@
+description = "a jump landing in the middle of an instruction"
+category = "decode"
+clause = "A.3"
+
+[[exec]]

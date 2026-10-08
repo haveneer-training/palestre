@@ -1,0 +1,5 @@
+description = "the jump base is the instruction after the jump"
+category = "jump"
+clause = "B.4"
+
+[[exec]]

@@ -1,0 +1,5 @@
+description = "the marker is read as one byte, even inside an operand"
+category = "jump"
+clause = "B.4"
+
+[[exec]]

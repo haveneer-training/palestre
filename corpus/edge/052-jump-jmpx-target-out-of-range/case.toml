@@ -1,0 +1,5 @@
+description = "a negative popped target is BadJump, not a new fault"
+category = "jump"
+clause = "B.4"
+
+[[exec]]

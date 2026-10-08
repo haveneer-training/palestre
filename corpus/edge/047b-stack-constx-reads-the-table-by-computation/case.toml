@@ -1,0 +1,5 @@
+description = "CONSTX on an empty stack is StackUnderflow, never BadConst"
+category = "stack"
+clause = "B.3"
+
+[[exec]]

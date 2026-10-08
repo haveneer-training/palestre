@@ -1,0 +1,5 @@
+description = "AND, OR and XOR on the two's-complement pattern"
+category = "bitwise"
+clause = "B.6"
+
+[[exec]]

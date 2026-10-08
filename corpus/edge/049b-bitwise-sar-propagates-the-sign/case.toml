@@ -1,0 +1,5 @@
+description = "SAR rounds toward minus infinity where DIV truncates toward zero"
+category = "bitwise"
+clause = "B.6"
+
+[[exec]]

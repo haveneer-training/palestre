@@ -1,0 +1,5 @@
+description = "setting, testing and toggling bits, and small shifts"
+category = "bitwise"
+clause = "B.6"
+
+[[exec]]

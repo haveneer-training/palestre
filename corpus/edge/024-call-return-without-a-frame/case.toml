@@ -1,0 +1,5 @@
+description = "RETURN with an empty call stack, and a return onto a plain byte"
+category = "call"
+clause = "B.4"
+
+[[exec]]

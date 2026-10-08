@@ -1,0 +1,5 @@
+description = "CALLX pops its target and returns like CALL"
+category = "call"
+clause = "B.3"
+
+[[exec]]

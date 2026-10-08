@@ -1,0 +1,5 @@
+description = "EQ, LT, GT and NOT, each answering 0 or 1"
+category = "arith"
+clause = "B.3"
+
+[[exec]]

@@ -1,0 +1,5 @@
+description = "STORE k on an empty stack is StackUnderflow, never OutOfBounds"
+category = "fault"
+clause = "B.5"
+
+[[exec]]

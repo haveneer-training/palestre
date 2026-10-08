@@ -1,0 +1,5 @@
+description = "NOT is logical, BNOT is the one's complement"
+category = "bitwise"
+clause = "B.6"
+
+[[exec]]

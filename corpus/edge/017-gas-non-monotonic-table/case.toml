@@ -1,0 +1,10 @@
+description = "the exact cost of a mixed sequence"
+category = "gas"
+clause = "B.3"
+
+[[exec]]
+budget = 21
+
+[[exec]]
+budget = 21
+mem = { 0 = 43 }
