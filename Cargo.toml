@@ -9,6 +9,7 @@ rust-version = "1.85"
 
 [workspace.dependencies]
 pbc = { path = "crates/pbc" }
+vm = { path = "crates/vm" }
 thiserror = "2"
 
 [workspace.lints.rust]
